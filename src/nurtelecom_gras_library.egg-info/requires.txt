@@ -1,4 +1,0 @@
-cx_Oracle
-matplotlib
-pandas
-sqlalchemy

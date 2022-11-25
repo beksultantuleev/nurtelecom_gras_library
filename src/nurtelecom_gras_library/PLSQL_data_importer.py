@@ -5,6 +5,7 @@ import timeit
 from sqlalchemy.engine import create_engine
 from sqlalchemy import update
 from sqlalchemy import text
+from additional_functions import *
 'this is light version (no geopandas)'
 
 
