@@ -12,11 +12,11 @@ setup(
     url='https://github.com/beksultantuleev/nurtelecom_gras_library.git',
     keywords='NurTelecom',
     install_requires=[
-          'scikit-learn',
+        #   'scikit-learn',
           'cx_Oracle', 
           'pandas',
           'sqlalchemy',
-          'shapely',
+        #   'shapely',
           'matplotlib'
       ],
 
