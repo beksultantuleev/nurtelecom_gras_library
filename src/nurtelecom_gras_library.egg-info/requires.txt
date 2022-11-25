@@ -1,0 +1,6 @@
+cx_Oracle
+matplotlib
+pandas
+scikit-learn
+shapely
+sqlalchemy
