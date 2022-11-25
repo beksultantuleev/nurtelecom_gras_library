@@ -33,4 +33,4 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-*__pycache__/
+*/__pycache__/
