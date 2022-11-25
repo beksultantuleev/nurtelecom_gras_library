@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='nurtelecom_gras_library',
-    version='0.3.6',
+    version='0.3.8',
     license='MIT',
     author="Beksultan Tuleev",
     author_email='kazamabeks@gmail.com',
@@ -17,7 +17,7 @@ setup(
         'pandas',
         'sqlalchemy',
         #   'shapely',
-        'matplotlib'
+        # 'matplotlib'
     ],
     classifiers=[
         # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
