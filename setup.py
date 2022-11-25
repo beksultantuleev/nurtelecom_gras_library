@@ -13,11 +13,23 @@ setup(
     keywords='NurTelecom',
     install_requires=[
         #   'scikit-learn',
-          'cx_Oracle', 
-          'pandas',
-          'sqlalchemy',
+        'cx_Oracle',
+        'pandas',
+        'sqlalchemy',
         #   'shapely',
-          'matplotlib'
-      ],
-
+        'matplotlib'
+    ],
+    classifiers=[
+        # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
+        'Development Status :: 3 - Alpha',
+        # Define that your audience are developers
+        'Intended Audience :: Developers of Nurtelecom',
+        'Topic :: Software Development :: Build Tools',
+        'License :: OSI Approved :: MIT License',   # Again, pick a license
+        # Specify which pyhton versions that you want to support
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+    ],
 )
