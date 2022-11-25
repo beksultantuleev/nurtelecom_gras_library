@@ -13,8 +13,8 @@ class PLSQL_data_importer():
     def __init__(self, user,
                  password,
                  host,
-                 port,
-                 service_name) -> None:
+                 port='1521',
+                 service_name= 'DWH') -> None:
 
         self.host = host
         self.port = port
