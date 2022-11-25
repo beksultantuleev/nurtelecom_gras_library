@@ -156,6 +156,4 @@ class PLSQL_data_importer():
 
 
 if __name__ == "__main__":
-    li = get_list_of_objects('src')
-    print(li)
     pass

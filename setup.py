@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='nurtelecom_gras_library',
-    version='0.3.11',
+    version='1.0.0',
     license='MIT',
     author="Beksultan Tuleev",
     author_email='kazamabeks@gmail.com',
@@ -21,7 +21,7 @@ setup(
     ],
     classifiers=[
         # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         # Define that your audience are developers
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Build Tools',
@@ -31,5 +31,6 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
     ],
 )
