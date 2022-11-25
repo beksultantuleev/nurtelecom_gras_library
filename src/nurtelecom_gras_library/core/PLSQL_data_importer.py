@@ -1,12 +1,10 @@
 import cx_Oracle
 import pandas as pd
 import timeit
-# from additional_functions import *
 from sqlalchemy.engine import create_engine
 from sqlalchemy import update
 from sqlalchemy import text
-from nurtelecom_gras_library.additional_functions.additional_functions import *
-
+from additional_functions import *
 
 'this is light version (no geopandas)'
 
@@ -160,4 +158,6 @@ class PLSQL_data_importer():
 
 
 if __name__ == "__main__":
+    li = get_list_of_objects('src')
+    print(li)
     pass
