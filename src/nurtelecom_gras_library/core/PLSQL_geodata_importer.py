@@ -11,7 +11,7 @@ from shapely.geometry import MultiPolygon
 from sqlalchemy.engine import create_engine
 from sqlalchemy import update
 from sqlalchemy import text
-from PLSQL_data_importer import PLSQL_data_importer
+from nurtelecom_gras_library.core.PLSQL_data_importer import PLSQL_data_importer
 
 'most complete version to deal with SHAPE FILES'
 
