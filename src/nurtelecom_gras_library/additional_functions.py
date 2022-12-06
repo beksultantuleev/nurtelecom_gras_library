@@ -143,7 +143,7 @@ def get_a_copy(path_to_original_file, end_path):
 def error_sender(exception_error, dir_path, project_name, list_of_phone_numbers, database_connector):
     # dir_path = os.path.dirname(os.path.realpath(__file__))
     full_error_msg = f"""Warning!\nError occurred in "{project_name}" at <code>{dir_path}</code>\n
-    """ + str(exception_error).replace("'", '"')
+    """ + str(exception_error)[:3500].replace("'", '"')
     send_telegram_msg(payload=full_error_msg, receiver=list_of_phone_numbers,
                       database_connector=database_connector)
 

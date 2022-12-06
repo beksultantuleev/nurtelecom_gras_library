@@ -39,7 +39,7 @@ class PLSQL_data_importer():
         if remove_na:
             data = data.dropna()
         if query != 'select sysdate from dual':
-            print(data.head())
+            print(data.head(5))
             stop = timeit.default_timer()
             print(f"end, time is {(stop - start) / 60:.2f} min")
         return data
@@ -59,7 +59,7 @@ class PLSQL_data_importer():
         stop = timeit.default_timer()
         print(f"end, time is {(stop - start) / 60:.2f} min")
 
-    def truncate_table(self, table_name):
+    def truncate_table_with_warning(self, table_name):
         '''Be careful with this function'''
         yes_answers = ['yes', 'y', 'yep', 'hell yea']
         user_answer = input(
@@ -73,7 +73,7 @@ class PLSQL_data_importer():
         else:
             print('Truncation is aborted!')
 
-    def truncate_table_no_warning(self, table_name):
+    def truncate_table(self, table_name):
         '''Be careful with this function'''
         trunc_query = (f'''
         TRUNCATE TABLE {table_name}
@@ -107,9 +107,10 @@ class PLSQL_data_importer():
 
     def close(self):
         self.conn.close()
-        print('Connection is closed!')
+        # print('Connection is closed!')
 
     def value_creator(self, num_of_columns):
+        'this function is used for upload pandas to oracle'
         string_values = ''
         for i in range(1, num_of_columns+1):
             string_values+=f':{i}, ' if i!=num_of_columns else f':{i}'

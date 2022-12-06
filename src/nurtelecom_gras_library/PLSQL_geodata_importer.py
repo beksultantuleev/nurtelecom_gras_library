@@ -11,13 +11,13 @@ from shapely.geometry import MultiPolygon
 from sqlalchemy.engine import create_engine
 from sqlalchemy import update
 from sqlalchemy import text
-from nurtelecom_gras_library.core.PLSQL_data_importer import PLSQL_data_importer
+from nurtelecom_gras_library.PLSQL_data_importer import PLSQL_data_importer
 
 'most complete version to deal with SHAPE FILES'
 
 class PLSQL_geodata_importer(PLSQL_data_importer):
     
-    def __init__(self, user, password, host, port, service_name) -> None:
+    def __init__(self, user, password, host, port='1521', service_name='dwh') -> None:
         super().__init__(user, password, host, port, service_name)
 
     def final_query_for_insertion(self, table_name, place_holder=None):
