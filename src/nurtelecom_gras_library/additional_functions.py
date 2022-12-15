@@ -1,6 +1,11 @@
 from genericpath import isdir
 import os
 import shutil
+import smtplib
+import mimetypes
+from argparse import ArgumentParser
+from email.message import EmailMessage
+from email.policy import SMTP
 
 
 def make_clob_query_from_pandas(data, counter, list_of_column_names, table_name, full_data_length=None):
@@ -138,6 +143,61 @@ def get_a_copy(path_to_original_file, end_path):
         print('copy complete!')
     except:
         print('failed')
+
+
+def send_email(send_to, send_from, subject, host, content=None, directory=None, file_to_attach=None):
+
+    # Create the message
+    msg = EmailMessage()
+    # f'Contents of directory {os.path.abspath(directory)}'
+    msg['Subject'] = subject
+    msg['To'] = send_to
+    msg['From'] = send_from
+    msg.preamble = 'You will not see this in a MIME-aware mail reader.\n'
+    if content != None:
+        msg.set_content(f"""{content}
+        """)
+    if file_to_attach != None:
+        filename = file_to_attach.split(
+            '\\') if '\\' in file_to_attach else file_to_attach.split('/')
+        # print(filename)
+        ctype, encoding = mimetypes.guess_type(file_to_attach)
+        if ctype is None or encoding is not None:
+            # No guess could be made, or the file is encoded (compressed), so
+            # use a generic bag-of-bits type.
+            ctype = 'application/octet-stream'
+        maintype, subtype = ctype.split('/', 1)
+        with open(file_to_attach, 'rb') as fp:
+            msg.add_attachment(fp.read(),
+                               maintype=maintype,
+                               subtype=subtype,
+                               filename=filename[-1]
+                               )
+
+    if directory != None:
+        for filename in os.listdir(directory):
+            path = os.path.join(directory, filename)
+            if not os.path.isfile(path):
+                continue
+            # Guess the content type based on the file's extension.  Encoding
+            # will be ignored, although we should check for simple things like
+            # gzip'd or compressed files.
+            ctype, encoding = mimetypes.guess_type(path)
+            if ctype is None or encoding is not None:
+                # No guess could be made, or the file is encoded (compressed), so
+                # use a generic bag-of-bits type.
+                ctype = 'application/octet-stream'
+            maintype, subtype = ctype.split('/', 1)
+            with open(path, 'rb') as fp:
+                msg.add_attachment(fp.read(),
+                                   maintype=maintype,
+                                   subtype=subtype,
+                                   filename=filename)
+    # Now send or store the message
+
+    with smtplib.SMTP(host, port=25) as s:
+        s.send_message(msg)
+    print(f'email sent from >> {send_from} to >> {send_to}')
 
 
 def error_sender(exception_error, dir_path, project_name, list_of_phone_numbers, database_connector):
