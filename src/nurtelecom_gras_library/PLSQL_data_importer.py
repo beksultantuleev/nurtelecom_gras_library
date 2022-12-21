@@ -145,14 +145,13 @@ class PLSQL_data_importer():
             ###
             print(f'number of new added rows >>{rowCount}')
             oracle_conn.commit()
-        except ValueError:
-            print('Error during insertion')
-        finally:
+        except:
             if oracle_conn:
 
                 oracle_conn.close()
                 print('oracle connection is closed!')
                 # oracle_cursor.close()
+            raise Exception
 
 
 
