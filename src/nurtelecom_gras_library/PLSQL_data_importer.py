@@ -22,8 +22,6 @@ class PLSQL_data_importer():
         self.password = password
 
         self.ENGINE_PATH_WIN_AUTH = f'oracle://{self.user}:{self.password}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={self.host})(PORT={self.port}))(CONNECT_DATA=(SERVICE_NAME={self.service_name})))'
-        self.get_data(
-            query='select sysdate from dual')
 
     def get_data(self, query,
                  remove_column=[],
@@ -38,10 +36,11 @@ class PLSQL_data_importer():
         data = data.drop(remove_column, axis=1)
         if remove_na:
             data = data.dropna()
-        if query != 'select sysdate from dual':
-            print(data.head(5))
-            stop = timeit.default_timer()
-            print(f"end, time is {(stop - start) / 60:.2f} min")
+        print(data.head(5))
+        stop = timeit.default_timer()
+        print(f"end, time is {(stop - start) / 60:.2f} min")
+        self.conn.close()
+        self.engine.dispose()
         return data
 
     def export_to_file(self, query, path, is_csv=True, sep=';'):
@@ -100,13 +99,17 @@ class PLSQL_data_importer():
         return query
 
     def execute(self, query):
+        self.engine = create_engine(self.ENGINE_PATH_WIN_AUTH)
+        self.conn = self.engine.connect()
         with self.engine.connect() as conn:
             conn.execute(text(query))  # text
             conn.close()
             print('Connection in execute is closed!')
-
-    def close(self):
         self.conn.close()
+        self.engine.dispose()
+
+    # def close(self):
+    #     self.conn.close()
         # print('Connection is closed!')
 
     def value_creator(self, num_of_columns):
@@ -132,26 +135,28 @@ class PLSQL_data_importer():
                 password=self.password,
                 dsn=self.dsn_tns
             )
-            oracle_cursor = oracle_conn.cursor()
-            ####
-            rowCount = 0
-            start_pos = 0
-            batch_size = 15000
-            while start_pos < len(pandas_tuple):
-                data_ = pandas_tuple[start_pos:start_pos + batch_size]
-                start_pos += batch_size
-                oracle_cursor.executemany(sql_text, data_)
-                rowCount += oracle_cursor.rowcount
-            ###
-            print(f'number of new added rows >>{rowCount}')
-            oracle_conn.commit()
+            # oracle_cursor = oracle_conn.cursor()
+            with oracle_conn.cursor() as oracle_cursor:
+                ####
+                rowCount = 0
+                start_pos = 0
+                batch_size = 15000
+                while start_pos < len(pandas_tuple):
+                    data_ = pandas_tuple[start_pos:start_pos + batch_size]
+                    start_pos += batch_size
+                    oracle_cursor.executemany(sql_text, data_)
+                    rowCount += oracle_cursor.rowcount
+                ###
+                print(f'number of new added rows >>{rowCount}')
+                oracle_conn.commit()
         except:
+            print('Error during insertion')
             if oracle_conn:
 
                 oracle_conn.close()
                 print('oracle connection is closed!')
-                # oracle_cursor.close()
             raise Exception
+
 
 
 
