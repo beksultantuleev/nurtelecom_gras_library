@@ -45,6 +45,8 @@ class PLSQL_data_importer():
 
     def export_to_file(self, query, path, is_csv=True, sep=';'):
         'file_extension could be csv or JSON'
+        self.engine = create_engine(self.ENGINE_PATH_WIN_AUTH)
+        self.conn = self.engine.connect()
         start = timeit.default_timer()
         with open(path, 'w') as f:
             for i, partial_df in enumerate(pd.read_sql(query, self.conn, chunksize=100000)):
@@ -56,6 +58,8 @@ class PLSQL_data_importer():
                 # else:
                 #     print("cannot do this format!")
         stop = timeit.default_timer()
+        self.conn.close()
+        self.engine.dispose()
         print(f"end, time is {(stop - start) / 60:.2f} min")
 
     def truncate_table_with_warning(self, table_name):

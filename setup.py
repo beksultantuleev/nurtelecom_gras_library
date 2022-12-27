@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='nurtelecom_gras_library',
-    version='1.0.4',
+    version='1.0.5',
     license='MIT',
     author="Beksultan Tuleev",
     author_email='kazamabeks@gmail.com',
