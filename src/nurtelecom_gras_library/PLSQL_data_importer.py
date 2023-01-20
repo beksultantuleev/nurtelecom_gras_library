@@ -116,7 +116,7 @@ class PLSQL_data_importer():
         self.conn.close()
         self.engine.dispose()
 
-    def upload_pandas_df_to_oracle_test(self, pandas_df, table_name, geometry_cols=[]):
+    def upload_pandas_df_to_oracle(self, pandas_df, table_name, geometry_cols=[]):
         values_string_list = [
             f":{i}" if v not in geometry_cols else f"SDO_UTIL.FROM_WKTGEOMETRY(:{i})" for i, v in enumerate(pandas_df, start=1)]
         values_string = ', '.join(values_string_list)
