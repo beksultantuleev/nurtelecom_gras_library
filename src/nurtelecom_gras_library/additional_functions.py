@@ -8,39 +8,6 @@ from email.message import EmailMessage
 from email.policy import SMTP
 
 
-def make_clob_query_from_pandas(data, counter, list_of_column_names, table_name, full_data_length=None):
-    'very rare useage'
-    num_of_features = len(list_of_column_names)
-    payload = ''
-    int_float_list = ['int64', 'int32', 'float32', 'float64', 'float']
-    query_declare = f'''\n
-    DECLARE
-    '''
-    query_begin_end = f'''
-    BEGIN\n'''
-
-    for index, column_type in enumerate(list_of_column_names):
-        if data[column_type].dtype == 'object':
-            payload += f'clob_{index}, ' if num_of_features - \
-                1 != index else f'clob_{index}'
-            query_declare += f'clob_{index} clob;\n'
-            query_begin_end += f'''clob_{index} := {merge_clob_maker(data[column_type][counter])};\n'''
-        elif data[column_type].dtype in int_float_list:
-            payload += f'numeric_{index}, ' if num_of_features - \
-                1 != index else f'numeric_{index}'
-            query_declare += f'numeric_{index} numeric;\n'
-            query_begin_end += f'''numeric_{index} := '{data[column_type][counter]}';\n'''
-    query_insert = f'''
-    \nINSERT INTO {table_name}
-                    VALUES({payload});
-    COMMIT;
-    END;
-    '''
-    if full_data_length != None:
-        print(f'insertion at {counter/full_data_length*100:.2f}% complete')
-    return query_declare + query_begin_end + query_insert
-
-
 def insert_from_pandas(data, counter, list_of_column_names, full_data_length=None):
     '''data is dataframe
     counter - counter of a row
@@ -89,15 +56,19 @@ def value_extractor(pattern, path):
                 return value
 
 
-def make_table_query_from_pandas(df, table_name, varchar_len=1000, list_num_columns=[], list_date_columns=[], list_clob_columns=[]):
+def make_table_query_from_pandas(df, table_name, varchar_len=500, list_num_columns=[], list_date_columns=[], list_geometry_columns = [], list_clob_columns=[]):
     query_for_creating_table = f'CREATE TABLE {table_name} (\n'
     for column in df:
         if column in list_num_columns:
             query_for_creating_table += f"""{column} \t number,\n"""
         elif column in list_date_columns:
             query_for_creating_table += f"""{column} \t date,\n"""
+        
         elif column in list_clob_columns:
             query_for_creating_table += f"""{column} \t clob,\n"""
+
+        elif column in list_geometry_columns:
+            query_for_creating_table += f"""{column} \t sdo_geometry,\n"""
         else:
             query_for_creating_table += f"""{column} \t varchar2({varchar_len}),\n"""
     query_for_creating_table = query_for_creating_table[:-2]
@@ -127,13 +98,23 @@ def send_telegram_msg(payload, receiver, database_connector):
 
 def send_sms(payload, receiver, database_connector):
     payload = payload.replace("'", '')
-    query_for_msg = f'''
-    BEGIN 
-        kpi.kpi_sms_to_send(msisdn => '{receiver}', sms_txt => '{payload}');
-        COMMIT;
-    END;
-    '''
-    database_connector.execute(query_for_msg)
+    if type(receiver) is list:
+        for receiv in receiver:
+            query_for_msg = f'''
+            BEGIN 
+                kpi.kpi_sms_to_send(msisdn => '{receiv}', sms_txt => '{payload}');
+                COMMIT;
+            END;
+            '''
+            database_connector.execute(query_for_msg)
+    else:
+        query_for_msg = f'''
+            BEGIN 
+                kpi.kpi_sms_to_send(msisdn => '{receiver}', sms_txt => '{payload}');
+                COMMIT;
+            END;
+            '''
+        database_connector.execute(query_for_msg)
 
 
 def get_a_copy(path_to_original_file, end_path):
@@ -145,7 +126,7 @@ def get_a_copy(path_to_original_file, end_path):
         print('failed')
 
 
-def send_email(send_to, send_from, subject, host, content=None, directory=None, file_to_attach=None):
+def send_email(send_to, send_from, subject, host, content=None, directory=None, file_to_attach=None, show_logs = False):
 
     # Create the message
     msg = EmailMessage()
@@ -197,7 +178,8 @@ def send_email(send_to, send_from, subject, host, content=None, directory=None, 
 
     with smtplib.SMTP(host, port=25) as s:
         s.send_message(msg)
-    print(f'email sent from >> {send_from} to >> {send_to}')
+    if show_logs:
+        print(f'email sent from >> {send_from} to >> {send_to}')
 
 
 def error_sender(exception_error, dir_path, project_name, list_of_phone_numbers, database_connector):
@@ -206,6 +188,42 @@ def error_sender(exception_error, dir_path, project_name, list_of_phone_numbers,
     """ + str(exception_error)[:3500].replace("'", '"')
     send_telegram_msg(payload=full_error_msg, receiver=list_of_phone_numbers,
                       database_connector=database_connector)
+
+
+
+
+'do not need'
+# def make_clob_query_from_pandas(data, counter, list_of_column_names, table_name, full_data_length=None):
+#     'very rare useage'
+#     num_of_features = len(list_of_column_names)
+#     payload = ''
+#     int_float_list = ['int64', 'int32', 'float32', 'float64', 'float']
+#     query_declare = f'''\n
+#     DECLARE
+#     '''
+#     query_begin_end = f'''
+#     BEGIN\n'''
+
+#     for index, column_type in enumerate(list_of_column_names):
+#         if data[column_type].dtype == 'object':
+#             payload += f'clob_{index}, ' if num_of_features - \
+#                 1 != index else f'clob_{index}'
+#             query_declare += f'clob_{index} clob;\n'
+#             query_begin_end += f'''clob_{index} := {merge_clob_maker(data[column_type][counter])};\n'''
+#         elif data[column_type].dtype in int_float_list:
+#             payload += f'numeric_{index}, ' if num_of_features - \
+#                 1 != index else f'numeric_{index}'
+#             query_declare += f'numeric_{index} numeric;\n'
+#             query_begin_end += f'''numeric_{index} := '{data[column_type][counter]}';\n'''
+#     query_insert = f'''
+#     \nINSERT INTO {table_name}
+#                     VALUES({payload});
+#     COMMIT;
+#     END;
+#     '''
+#     if full_data_length != None:
+#         print(f'insertion at {counter/full_data_length*100:.2f}% complete')
+#     return query_declare + query_begin_end + query_insert
 
 
 if __name__ == "__main__":

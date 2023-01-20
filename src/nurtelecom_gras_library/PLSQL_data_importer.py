@@ -7,13 +7,15 @@ from sqlalchemy import text
 
 
 'this is light version (no geopandas)'
+
+
 class PLSQL_data_importer():
 
     def __init__(self, user,
                  password,
                  host,
                  port='1521',
-                 service_name= 'DWH') -> None:
+                 service_name='DWH') -> None:
 
         self.host = host
         self.port = port
@@ -25,7 +27,8 @@ class PLSQL_data_importer():
 
     def get_data(self, query,
                  remove_column=[],
-                 remove_na=False):
+                 remove_na=False,
+                 show_logs=False):
         'establish connection and return data'
         start = timeit.default_timer()
 
@@ -36,9 +39,10 @@ class PLSQL_data_importer():
         data = data.drop(remove_column, axis=1)
         if remove_na:
             data = data.dropna()
-        print(data.head(5))
         stop = timeit.default_timer()
-        print(f"end, time is {(stop - start) / 60:.2f} min")
+        if show_logs:
+            print(data.head(5))
+            print(f"end, time is {(stop - start) / 60:.2f} min")
         self.conn.close()
         self.engine.dispose()
         return data
@@ -112,23 +116,19 @@ class PLSQL_data_importer():
         self.conn.close()
         self.engine.dispose()
 
-    # def close(self):
-    #     self.conn.close()
-        # print('Connection is closed!')
-
-    def value_creator(self, num_of_columns):
-        'this function is used for upload pandas to oracle'
-        string_values = ''
-        for i in range(1, num_of_columns+1):
-            string_values+=f':{i}, ' if i!=num_of_columns else f':{i}'
-        return string_values
-
-    def upload_pandas_df_to_oracle(self, pandas_df, table_name):
+    def upload_pandas_df_to_oracle_test(self, pandas_df, table_name, geometry_cols=[]):
+        values_string_list = [
+            f":{i}" if v not in geometry_cols else f"SDO_UTIL.FROM_WKTGEOMETRY(:{i})" for i, v in enumerate(pandas_df, start=1)]
+        values_string = ', '.join(values_string_list)
+        if len(geometry_cols) != 0:
+            for geo_col in geometry_cols:
+                pandas_df.loc[:, geo_col] = pandas_df.loc[:,
+                                                          geo_col].astype(str)
         try:
-            values_string = self.value_creator(pandas_df.shape[1])
+            # values_string = value_creator(pandas_df.shape[1])
             pandas_tuple = [tuple(i) for i in pandas_df.values]
-            sql_text = f'insert into {table_name} values({values_string})'
-
+            sql_text = f"insert into {table_name} values({values_string})"
+            # print(sql_text)
             self.dsn_tns = cx_Oracle.makedsn(
                 self.host,
                 self.port,
@@ -151,8 +151,18 @@ class PLSQL_data_importer():
                     oracle_cursor.executemany(sql_text, data_)
                     rowCount += oracle_cursor.rowcount
                 ###
-                print(f'number of new added rows >>{rowCount}')
+                print(
+                    f'number of new added rows in "{table_name}" >>{rowCount}')
                 oracle_conn.commit()
+                if len(geometry_cols) != 0:
+                    for geo_col in geometry_cols:
+                        update_sdo_srid = f'''UPDATE {table_name} T
+                                    SET T.{geo_col}.SDO_SRID = 4326
+                                    WHERE T.{geo_col} IS NOT NULL'''
+                        oracle_cursor.execute(update_sdo_srid)
+                        print(f'SDO_SRID of "{geo_col}" is updated to "4326" ')
+                    oracle_conn.commit()
+
         except:
             print('Error during insertion')
             if oracle_conn:
@@ -161,7 +171,52 @@ class PLSQL_data_importer():
                 print('oracle connection is closed!')
             raise Exception
 
+    'old deprecated'
+    # def upload_pandas_df_to_oracle(self, pandas_df, table_name):
+    #     try:
+    #         values_string = self.value_creator(pandas_df.shape[1])
+    #         pandas_tuple = [tuple(i) for i in pandas_df.values]
+    #         sql_text = f'insert into {table_name} values({values_string})'
 
+    #         self.dsn_tns = cx_Oracle.makedsn(
+    #             self.host,
+    #             self.port,
+    #             service_name=self.service_name)
+
+    #         oracle_conn = cx_Oracle.connect(
+    #             user=self.user,
+    #             password=self.password,
+    #             dsn=self.dsn_tns
+    #         )
+    #         # oracle_cursor = oracle_conn.cursor()
+    #         with oracle_conn.cursor() as oracle_cursor:
+    #             ####
+    #             rowCount = 0
+    #             start_pos = 0
+    #             batch_size = 15000
+    #             while start_pos < len(pandas_tuple):
+    #                 data_ = pandas_tuple[start_pos:start_pos + batch_size]
+    #                 start_pos += batch_size
+    #                 oracle_cursor.executemany(sql_text, data_)
+    #                 rowCount += oracle_cursor.rowcount
+    #             ###
+    #             print(f'number of new added rows >>{rowCount}')
+    #             oracle_conn.commit()
+    #     except:
+    #         print('Error during insertion')
+    #         if oracle_conn:
+
+    #             oracle_conn.close()
+    #             print('oracle connection is closed!')
+    #         raise Exception
+
+    'do not need anymore'
+    # def value_creator(self, num_of_columns):
+    #     'this function is used for upload pandas to oracle'
+    #     string_values = ''
+    #     for i in range(1, num_of_columns+1):
+    #         string_values += f':{i}, ' if i != num_of_columns else f':{i}'
+    #     return string_values
 
 
 if __name__ == "__main__":

@@ -15,20 +15,21 @@ from nurtelecom_gras_library.PLSQL_data_importer import PLSQL_data_importer
 
 'most complete version to deal with SHAPE FILES'
 
-class PLSQL_geodata_importer(PLSQL_data_importer):
-    
-    def __init__(self, user, password, host, port='1521', service_name='dwh') -> None:
-        super().__init__(user, password, host, port, service_name)
 
-    def final_query_for_insertion(self, table_name, place_holder=None):
-        return super().final_query_for_insertion(table_name, place_holder)
+class PLSQL_geodata_importer(PLSQL_data_importer):
+
+    # def __init__(self, user, password, host, port='1521', service_name='dwh') -> None:
+    #     super().__init__(user, password, host, port, service_name)
+    def __init__(self, user, password, host, port='1521', service_name='DWH') -> None:
+        super().__init__(user, password, host, port, service_name)
 
     def get_data(self, query,
                  use_geopandas=False,
                  geom_column='geometry',
                  point_columns=[],
                  remove_column=[],
-                 remove_na=False):
+                 remove_na=False,
+                 show_logs=False):
         'establish connection and return data'
         start = timeit.default_timer()
 
@@ -58,12 +59,15 @@ class PLSQL_geodata_importer(PLSQL_data_importer):
 
             data.rename(columns={geom_column: 'geometry'}, inplace=True)
             data = gpd.GeoDataFrame(data=data, crs="EPSG:4326")
-        print(data.head())
         stop = timeit.default_timer()
-        print(f"end, time is {(stop - start) / 60:.2f} min")
+        if show_logs:
+            print(data.head())
+            print(f"end, time is {(stop - start) / 60:.2f} min")
+        self.conn.close()
+        self.engine.dispose()
         return data
 
 
 if __name__ == "__main__":
-    
+
     pass
