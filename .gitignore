@@ -33,3 +33,5 @@ share/python-wheels/
 MANIFEST
 
 */__pycache__/
+**/__pycache__/*
+src/**/__pycache__/
