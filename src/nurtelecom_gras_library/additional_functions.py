@@ -6,6 +6,7 @@ import mimetypes
 from argparse import ArgumentParser
 from email.message import EmailMessage
 from email.policy import SMTP
+import timeit
 
 
 def insert_from_pandas(data, counter, list_of_column_names, full_data_length=None):
