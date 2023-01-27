@@ -190,40 +190,14 @@ def error_sender(exception_error, dir_path, project_name, list_of_phone_numbers,
                       database_connector=database_connector)
 
 
-
-
-'do not need'
-# def make_clob_query_from_pandas(data, counter, list_of_column_names, table_name, full_data_length=None):
-#     'very rare useage'
-#     num_of_features = len(list_of_column_names)
-#     payload = ''
-#     int_float_list = ['int64', 'int32', 'float32', 'float64', 'float']
-#     query_declare = f'''\n
-#     DECLARE
-#     '''
-#     query_begin_end = f'''
-#     BEGIN\n'''
-
-#     for index, column_type in enumerate(list_of_column_names):
-#         if data[column_type].dtype == 'object':
-#             payload += f'clob_{index}, ' if num_of_features - \
-#                 1 != index else f'clob_{index}'
-#             query_declare += f'clob_{index} clob;\n'
-#             query_begin_end += f'''clob_{index} := {merge_clob_maker(data[column_type][counter])};\n'''
-#         elif data[column_type].dtype in int_float_list:
-#             payload += f'numeric_{index}, ' if num_of_features - \
-#                 1 != index else f'numeric_{index}'
-#             query_declare += f'numeric_{index} numeric;\n'
-#             query_begin_end += f'''numeric_{index} := '{data[column_type][counter]}';\n'''
-#     query_insert = f'''
-#     \nINSERT INTO {table_name}
-#                     VALUES({payload});
-#     COMMIT;
-#     END;
-#     '''
-#     if full_data_length != None:
-#         print(f'insertion at {counter/full_data_length*100:.2f}% complete')
-#     return query_declare + query_begin_end + query_insert
+def measure_time(func):
+    def wrapper(*args, **kwargs):
+        start = timeit.default_timer()
+        result = func(*args, **kwargs)
+        stop = timeit.default_timer()
+        print(f"executed in {(stop - start) / 60:.2f} min")
+        return result
+    return wrapper
 
 
 if __name__ == "__main__":
