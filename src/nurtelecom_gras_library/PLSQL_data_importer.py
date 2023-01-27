@@ -171,52 +171,6 @@ class PLSQL_data_importer():
                 print('oracle connection is closed!')
             raise Exception
 
-    'old deprecated'
-    # def upload_pandas_df_to_oracle(self, pandas_df, table_name):
-    #     try:
-    #         values_string = self.value_creator(pandas_df.shape[1])
-    #         pandas_tuple = [tuple(i) for i in pandas_df.values]
-    #         sql_text = f'insert into {table_name} values({values_string})'
-
-    #         self.dsn_tns = cx_Oracle.makedsn(
-    #             self.host,
-    #             self.port,
-    #             service_name=self.service_name)
-
-    #         oracle_conn = cx_Oracle.connect(
-    #             user=self.user,
-    #             password=self.password,
-    #             dsn=self.dsn_tns
-    #         )
-    #         # oracle_cursor = oracle_conn.cursor()
-    #         with oracle_conn.cursor() as oracle_cursor:
-    #             ####
-    #             rowCount = 0
-    #             start_pos = 0
-    #             batch_size = 15000
-    #             while start_pos < len(pandas_tuple):
-    #                 data_ = pandas_tuple[start_pos:start_pos + batch_size]
-    #                 start_pos += batch_size
-    #                 oracle_cursor.executemany(sql_text, data_)
-    #                 rowCount += oracle_cursor.rowcount
-    #             ###
-    #             print(f'number of new added rows >>{rowCount}')
-    #             oracle_conn.commit()
-    #     except:
-    #         print('Error during insertion')
-    #         if oracle_conn:
-
-    #             oracle_conn.close()
-    #             print('oracle connection is closed!')
-    #         raise Exception
-
-    'do not need anymore'
-    # def value_creator(self, num_of_columns):
-    #     'this function is used for upload pandas to oracle'
-    #     string_values = ''
-    #     for i in range(1, num_of_columns+1):
-    #         string_values += f':{i}, ' if i != num_of_columns else f':{i}'
-    #     return string_values
 
 
 if __name__ == "__main__":
