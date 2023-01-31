@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='nurtelecom_gras_library',
-    version='1.0.9',
+    version='1.1.0',
     license='MIT',
     author="Beksultan Tuleev",
     author_email='kazamabeks@gmail.com',
@@ -16,12 +16,15 @@ setup(
         'cx_Oracle',
         'pandas',
         'sqlalchemy',
+        'openpyxl',
+        'tabulate',
+        'transliterate'
         #   'shapely',
         # 'matplotlib'
     ],
     classifiers=[
         # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         # Define that your audience are developers
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Build Tools',
