@@ -29,6 +29,7 @@ class PLSQL_data_importer():
                  remove_column=[],
                  remove_na=False,
                  show_logs=False):
+        query = text(query)
         'establish connection and return data'
         start = timeit.default_timer()
 
@@ -48,6 +49,7 @@ class PLSQL_data_importer():
         return data
 
     def export_to_file(self, query, path, is_csv=True, sep=';'):
+        query = text(query)
         'file_extension could be csv or JSON'
         self.engine = create_engine(self.ENGINE_PATH_WIN_AUTH)
         self.conn = self.engine.connect()
@@ -107,6 +109,7 @@ class PLSQL_data_importer():
         return query
 
     def execute(self, query):
+        query = text(query)
         self.engine = create_engine(self.ENGINE_PATH_WIN_AUTH)
         self.conn = self.engine.connect()
         with self.engine.connect() as conn:

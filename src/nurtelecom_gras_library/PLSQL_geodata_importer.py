@@ -30,6 +30,7 @@ class PLSQL_geodata_importer(PLSQL_data_importer):
                  remove_column=[],
                  remove_na=False,
                  show_logs=False):
+        query = text(query)
         'establish connection and return data'
         start = timeit.default_timer()
 

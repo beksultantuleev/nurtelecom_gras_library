@@ -60,6 +60,7 @@ def value_extractor(pattern, path):
 def make_table_query_from_pandas(df, table_name, varchar_len=500, list_num_columns=[], list_date_columns=[], list_geometry_columns = [], list_clob_columns=[]):
     query_for_creating_table = f'CREATE TABLE {table_name} (\n'
     for column in df:
+        column = f"{column}"[:25]
         if column in list_num_columns:
             query_for_creating_table += f"""{column} \t number,\n"""
         elif column in list_date_columns:
