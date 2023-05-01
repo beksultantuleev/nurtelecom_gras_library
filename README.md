@@ -15,7 +15,7 @@ test_data = database_connection.get_data(query = test_query)
 
 #make new_create query from pandas df
 new_table_name_for_sql = "test_table_name"
-query_from_tabel = make_table_query_from_pandas(df = test_data, table_name =        new_table_name_for_sql)
+query_from_tabel = make_table_query_from_pandas(df = test_data, table_name= new_table_name_for_sql)
 
 #execute query
 database_connection.execute(query_from_tabel)
