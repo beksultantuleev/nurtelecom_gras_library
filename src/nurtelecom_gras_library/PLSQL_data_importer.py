@@ -113,7 +113,7 @@ class PLSQL_data_importer():
         self.engine = create_engine(self.ENGINE_PATH_WIN_AUTH)
         self.conn = self.engine.connect()
         with self.engine.connect() as conn:
-            conn.execute(text(query))  # text
+            conn.execute(query)  # text
             conn.close()
             print('Connection in execute is closed!')
         self.conn.close()

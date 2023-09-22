@@ -7,7 +7,7 @@ setup(
     name='nurtelecom_gras_library',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    version='1.1.5',
+    version='1.1.6',
     license='MIT',
     author="Beksultan Tuleev",
     author_email='kazamabeks@gmail.com',
