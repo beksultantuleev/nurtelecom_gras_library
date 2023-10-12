@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from email.message import EmailMessage
 from email.policy import SMTP
 import timeit
+import requests
 
 
 def insert_from_pandas(data, counter, list_of_column_names, full_data_length=None):
@@ -96,6 +97,19 @@ def send_telegram_msg(payload, receiver, database_connector):
             END;
             '''
             database_connector.execute(query_for_msg)
+
+
+def send_file_via_telegram(token, chat_id, path_to_file, captions= None, verbose = False):
+    files = {
+        'document': open(path_to_file, 'rb',),
+    }
+    data = None
+    if captions:
+        data = {'caption': captions}
+    response = requests.post(
+        f'https://api.telegram.org/bot{token}/sendDocument?chat_id={chat_id}', files=files, data=data)
+    if verbose:
+        print(f'"{path_to_file}" has been sent to chat_id: "{chat_id}"')
 
 
 def send_sms(payload, receiver, database_connector):
