@@ -111,6 +111,17 @@ def send_file_via_telegram(token, chat_id, path_to_file, captions= None, verbose
     if verbose:
         print(f'"{path_to_file}" has been sent to chat_id: "{chat_id}"')
 
+def send_msg_via_telegram(token, chat_id, msg_text, parse_mode='html', verbose = False):
+
+    params = {
+        'chat_id': chat_id,
+        'text': msg_text,
+        'parse_mode': parse_mode  # Set the parse mode to Markdown
+        }
+    response = requests.post(
+        f'https://api.telegram.org/bot{token}/sendMessage', params=params)
+    if verbose:
+        print(f'"{msg_text}" has been sent to chat_id: "{chat_id}"')
 
 def send_sms(payload, receiver, database_connector):
     payload = payload.replace("'", '')
