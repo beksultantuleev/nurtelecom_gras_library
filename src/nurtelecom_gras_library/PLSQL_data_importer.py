@@ -25,6 +25,20 @@ class PLSQL_data_importer():
 
         self.ENGINE_PATH_WIN_AUTH = f'oracle://{self.user}:{self.password}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={self.host})(PORT={self.port}))(CONNECT_DATA=(SERVICE_NAME={self.service_name})))'
 
+    def get_engine(self):
+        '''use engine for making manual connection 
+        for instance: 
+        
+        engine = database_connector.get_engine()
+        conn = engine.connect()
+
+        Do not forget to close connection 
+        
+        conn.close()
+        '''
+        engine = create_engine(self.ENGINE_PATH_WIN_AUTH)
+        return engine
+
     def get_data(self, query,
                  remove_column=[],
                  remove_na=False,
@@ -108,14 +122,15 @@ class PLSQL_data_importer():
             '''
         return query
 
-    def execute(self, query):
+    def execute(self, query, verbose = False):
         query = text(query)
         self.engine = create_engine(self.ENGINE_PATH_WIN_AUTH)
         self.conn = self.engine.connect()
         with self.engine.connect() as conn:
             conn.execute(query)  # text
             conn.close()
-            print('Connection in execute is closed!')
+            if verbose:
+                print('Connection in execute is closed!')
         self.conn.close()
         self.engine.dispose()
 
