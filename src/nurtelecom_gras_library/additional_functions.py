@@ -8,6 +8,7 @@ from email.message import EmailMessage
 from email.policy import SMTP
 import timeit
 import requests
+import base64
 
 
 def insert_from_pandas(data, counter, list_of_column_names, full_data_length=None):
@@ -111,6 +112,7 @@ def send_file_via_telegram(token, chat_id, path_to_file, captions= None, verbose
     if verbose:
         print(f'"{path_to_file}" has been sent to chat_id: "{chat_id}"')
 
+
 def send_msg_via_telegram(token, chat_id, msg_text, parse_mode='html', verbose = False):
 
     params = {
@@ -122,6 +124,7 @@ def send_msg_via_telegram(token, chat_id, msg_text, parse_mode='html', verbose =
         f'https://api.telegram.org/bot{token}/sendMessage', params=params)
     if verbose:
         print(f'"{msg_text}" has been sent to chat_id: "{chat_id}"')
+
 
 def send_sms(payload, receiver, database_connector):
     payload = payload.replace("'", '')
@@ -225,6 +228,16 @@ def measure_time(func):
         print(f"executed in {(stop - start) / 60:.2f} min")
         return result
     return wrapper
+
+
+def pass_encoder(password):
+    encoded_password = base64.b64encode(password.encode()).decode()
+    return encoded_password
+
+
+def pass_decoder(encoded_password):
+    password_decode = base64.b64decode(encoded_password).decode()
+    return password_decode
 
 
 if __name__ == "__main__":
