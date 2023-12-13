@@ -189,6 +189,87 @@ class PLSQL_data_importer():
                 print('oracle connection is closed!')
             raise Exception
 
+    def upsert_from_pandas_df(self, pandas_df, table_name, list_of_keys, sum_update_columns = [] ):
+        "connection"
+        self.dsn_tns = cx_Oracle.makedsn(
+            self.host,
+            self.port,
+            service_name=self.service_name)
+
+        oracle_conn = cx_Oracle.connect(
+            user=self.user,
+            password=self.password,
+            dsn=self.dsn_tns
+        )
+        # dsn_tns = cx_Oracle.makedsn(host, port, service)
+        # oracle_conn = cx_Oracle.connect(user=user, password=passwd, dsn=dsn_tns)
+        "create query "
+        list_of_all_columns = pandas_df.columns
+        list_regular_columns = list(set(list_of_all_columns)- set(list_of_keys))
+
+        column_selection = ''
+        for col in list_of_all_columns:
+            column_selection+=f'\t:{col} AS {col},\n'
+
+        list_of_processed_keys = []
+        for key in list_of_keys:
+            key_selection = ''
+            key_selection+=f"t.{key} = s.{key}"
+            list_of_processed_keys.append(key_selection)
+
+        # print(list_of_processed_keys)
+        matched_selection = ''
+        for col in list_regular_columns:
+            if col not in sum_update_columns:
+                matched_selection+=f"t.{col} = s.{col},\n"
+            else:
+                matched_selection+=f"t.{col} = t.{col} + s.{col},\n"
+
+        # print(matched_selection)
+
+        merge_sql = f"""
+        MERGE INTO {table_name} t
+                USING (
+                SELECT
+        {column_selection[:-2]}
+                FROM dual
+                        ) s
+            ON ({" AND ".join(list_of_processed_keys)})
+                WHEN MATCHED THEN
+                UPDATE SET {matched_selection[:-2]}
+                WHEN NOT MATCHED THEN
+                    INSERT ({", ".join(list_of_all_columns)})
+                    VALUES ({", ".join([f"s.{i}" for i in list_of_all_columns])})
+        """
+        # print(merge_sql)
+        data_list = pandas_df.to_dict(orient='records')
+        # cursor.executemany(merge_sql, data_list)
+                        ####
+        try:
+            with oracle_conn.cursor() as oracle_cursor:                    
+                rowCount = 0
+                start_pos = 0
+                batch_size = 15000
+                while start_pos < len(data_list):
+                    data_ = data_list[start_pos:start_pos + batch_size]
+                    start_pos += batch_size
+                    oracle_cursor.executemany(merge_sql, data_)
+                    rowCount += oracle_cursor.rowcount
+                ###
+                print(
+                    f'number of new added rows in "{table_name}" >>{rowCount}')
+
+            # Commit the changes
+            oracle_conn.commit()
+            # Close the connection
+            oracle_conn.close()
+        except:
+            print('Error during upsert!')
+            if oracle_conn:
+                oracle_conn.close()
+                print('oracle connection is closed!')
+            raise Exception
+
 
 
 if __name__ == "__main__":
