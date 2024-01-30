@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+
+[project]
+name = "nurtelecom_gras_library"
+version = "1.3.0"
+description = "Official Nurtelecom gras library"
+readme = "README.md"
+authors = [
+    { name = "Beksultan Tuleev", email = "kazamabeks@gmail.com" }
+]
+license = { file="LICENSE" }
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+urls = { "Homepage" = "https://github.com/beksultantuleev/nurtelecom_gras_library.git" }
+dependencies = [
+    "cx_Oracle",
+    "pandas",
+    "sqlalchemy",
+    "openpyxl",
+    "tabulate",
+    "requests",
+    "transliterate"
+]
+
+[tool.setuptools]
+packages = { find = { where = ["src"] } }
