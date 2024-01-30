@@ -12,7 +12,10 @@ import base64
 
 
 def insert_from_pandas(data, counter, list_of_column_names, full_data_length=None):
-    '''data is dataframe
+    '''
+    function is depricated
+
+    data is dataframe
     counter - counter of a row
     list_of_column_names - columns to incert into table'''
     modified_query = "".join(
@@ -20,7 +23,6 @@ def insert_from_pandas(data, counter, list_of_column_names, full_data_length=Non
     if full_data_length != None:
         print(f'Inserting... ({counter/full_data_length*100:.2f}%)')
     return modified_query
-
 
 def get_list_of_objects(path, is_dir=False):
     'to get list of files in certain directory'
@@ -33,7 +35,6 @@ def get_list_of_objects(path, is_dir=False):
             if os.path.isfile(os.path.join(path, file)):
                 list_of_file_names.append(file)
     return list_of_file_names
-
 
 def merge_clob_maker(string_to_split, num_of_charr=25000):
     'to be able to fit any query from python to sql'
@@ -49,7 +50,6 @@ def merge_clob_maker(string_to_split, num_of_charr=25000):
         count += 1
     return req
 
-
 def value_extractor(pattern, path):
     with open(path) as f:
         lines = f.read().splitlines()
@@ -57,7 +57,6 @@ def value_extractor(pattern, path):
             if pattern in i:
                 value = float(i[len(pattern):])
                 return value
-
 
 def make_table_query_from_pandas(df, table_name, varchar_len=500, list_num_columns=[], list_date_columns=[], list_geometry_columns = [], list_clob_columns=[]):
     query_for_creating_table = f'CREATE TABLE {table_name} (\n'
@@ -79,7 +78,6 @@ def make_table_query_from_pandas(df, table_name, varchar_len=500, list_num_colum
     query_for_creating_table += '\n)'
     return query_for_creating_table
 
-
 def send_telegram_msg(payload, receiver, database_connector):
     'updated send_telegram logic'
     payload = payload.replace("'", '')
@@ -99,8 +97,7 @@ def send_telegram_msg(payload, receiver, database_connector):
             '''
             database_connector.execute(query_for_msg)
 
-
-def send_file_via_telegram(token, chat_id, path_to_file, captions= None, verbose = False):
+def send_file_via_telegram(token, chat_id, path_to_file, proxies, captions= None, verbose = False):
     files = {
         'document': open(path_to_file, 'rb',),
     }
@@ -108,12 +105,11 @@ def send_file_via_telegram(token, chat_id, path_to_file, captions= None, verbose
     if captions:
         data = {'caption': captions}
     response = requests.post(
-        f'https://api.telegram.org/bot{token}/sendDocument?chat_id={chat_id}', files=files, data=data)
+        f'https://api.telegram.org/bot{token}/sendDocument?chat_id={chat_id}', files=files, data=data, proxies=proxies)
     if verbose:
         print(f'"{path_to_file}" has been sent to chat_id: "{chat_id}"')
 
-
-def send_msg_via_telegram(token, chat_id, msg_text, parse_mode='html', verbose = False):
+def send_msg_via_telegram(token, chat_id, msg_text, proxies, parse_mode='html', verbose = False):
 
     params = {
         'chat_id': chat_id,
@@ -121,10 +117,9 @@ def send_msg_via_telegram(token, chat_id, msg_text, parse_mode='html', verbose =
         'parse_mode': parse_mode  # Set the parse mode to Markdown
         }
     response = requests.post(
-        f'https://api.telegram.org/bot{token}/sendMessage', params=params)
+        f'https://api.telegram.org/bot{token}/sendMessage', params=params, proxies=proxies)
     if verbose:
         print(f'"{msg_text}" has been sent to chat_id: "{chat_id}"')
-
 
 def send_sms(payload, receiver, database_connector):
     payload = payload.replace("'", '')
@@ -146,7 +141,6 @@ def send_sms(payload, receiver, database_connector):
             '''
         database_connector.execute(query_for_msg)
 
-
 def get_a_copy(path_to_original_file, end_path):
     try:
         shutil.copyfile(path_to_original_file,
@@ -154,7 +148,6 @@ def get_a_copy(path_to_original_file, end_path):
         print('copy complete!')
     except:
         print('failed')
-
 
 def send_email(send_to, send_from, subject, host, content=None, directory=None, file_to_attach=None, show_logs = False):
 
@@ -211,14 +204,12 @@ def send_email(send_to, send_from, subject, host, content=None, directory=None, 
     if show_logs:
         print(f'email sent from >> {send_from} to >> {send_to}')
 
-
 def error_sender(exception_error, dir_path, project_name, list_of_phone_numbers, database_connector):
     # dir_path = os.path.dirname(os.path.realpath(__file__))
     full_error_msg = f"""Warning!\nError occurred in "{project_name}" at <code>{dir_path}</code>\n
     """ + str(exception_error)[:3500].replace("'", '"')
     send_telegram_msg(payload=full_error_msg, receiver=list_of_phone_numbers,
                       database_connector=database_connector)
-
 
 def measure_time(func):
     def wrapper(*args, **kwargs):
@@ -229,16 +220,54 @@ def measure_time(func):
         return result
     return wrapper
 
-
 def pass_encoder(password):
     encoded_password = base64.b64encode(password.encode()).decode()
     return encoded_password
-
 
 def pass_decoder(encoded_password):
     password_decode = base64.b64decode(encoded_password).decode()
     return password_decode
 
+def voronoi_split(poly_figure, coords_list, buffer_value=2000, boundary_value=100):
+    """
+    Perform a Voronoi partition on a polygon with given coordinates and intersect these partitions with the original polygon.
+
+    Parameters:
+    poly_figure (shapely.geometry.Polygon): The polygon to split.
+    coords_list (list of tuples): List of coordinates (x, y) inside the polygon.
+    buffer_value (int, optional): Buffer value for the polygon. Default is 2000.
+    boundary_value (int, optional): Distance between points on the boundary. Default is 100.
+
+    Returns:
+    geopandas.GeoDataFrame: Resulting GeoDataFrame after intersection.
+    """
+
+    # Filter coordinates inside the polygon using vectorized operation
+    coords_array = np.array(coords_list)
+    contained = np.array([poly_figure.contains(Point(p)) for p in coords_array])
+    coords_inside = coords_array[contained]
+
+    # Create a polygon boundary with buffer
+    bound = poly_figure.buffer(buffer_value).envelope.boundary
+    distances = np.arange(0, np.ceil(bound.length), boundary_value)
+    boundarypoints = [bound.interpolate(distance=d) for d in distances]
+    boundarycoords = np.array([[p.x, p.y] for p in boundarypoints])
+
+    # Create an array of all points
+    all_coords = np.concatenate((boundarycoords, coords_inside)) 
+
+    # Perform Voronoi partition
+    vor = Voronoi(points=all_coords)
+    lines = [shapely.geometry.LineString(vor.vertices[line]) for line in vor.ridge_vertices if -1 not in line]
+
+    polys = shapely.ops.polygonize(lines)
+    voronois = gpd.GeoDataFrame(geometry=gpd.GeoSeries(polys), crs="epsg:4326")
+    polydf = gpd.GeoDataFrame(geometry=[poly_figure], crs="epsg:4326")
+
+    # Intersect Voronoi partitions with the original polygon
+    result = gpd.overlay(df1=voronois, df2=polydf, how="intersection")
+
+    return result
 
 if __name__ == "__main__":
     pass
