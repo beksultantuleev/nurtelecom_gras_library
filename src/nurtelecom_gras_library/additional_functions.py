@@ -9,7 +9,7 @@ from email.policy import SMTP
 import timeit
 import requests
 import base64
-
+from PLSQL_data_importer import PLSQL_data_importer
 
 def insert_from_pandas(data, counter, list_of_column_names, full_data_length=None):
     '''
@@ -97,19 +97,23 @@ def send_telegram_msg(payload, receiver, database_connector):
             '''
             database_connector.execute(query_for_msg)
 
-def send_file_via_telegram(token, chat_id, path_to_file, proxies, captions= None, verbose = False):
+def send_file_via_telegram(token, chat_id, path_to_file, proxies=None, captions= None, verbose = False, parse_mode = 'html'):
     files = {
         'document': open(path_to_file, 'rb',),
     }
     data = None
+    params = {
+        'chat_id': chat_id,
+        'parse_mode': parse_mode  # Set the parse mode to Markdown
+        }
     if captions:
         data = {'caption': captions}
     response = requests.post(
-        f'https://api.telegram.org/bot{token}/sendDocument?chat_id={chat_id}', files=files, data=data, proxies=proxies)
+        f'https://api.telegram.org/bot{token}/sendDocument', files=files, data=data, proxies=proxies, params=params)
     if verbose:
         print(f'"{path_to_file}" has been sent to chat_id: "{chat_id}"')
 
-def send_msg_via_telegram(token, chat_id, msg_text, proxies, parse_mode='html', verbose = False):
+def send_msg_via_telegram(token, chat_id, msg_text, proxies = None, parse_mode='html', verbose = False):
 
     params = {
         'chat_id': chat_id,
@@ -269,5 +273,21 @@ def voronoi_split(poly_figure, coords_list, buffer_value=2000, boundary_value=10
 
     return result
 
+def get_db_connection(user, database, port='1521'):
+    database = database.upper()
+    user = user.upper()
+    database_connection = PLSQL_data_importer(user=user,
+                                              password=pass_decoder(
+                                                  os.environ.get(f'{user}_{database}')),
+                                              host=pass_decoder(
+                                                  os.environ.get(f'{database}_IP')),
+                                              service_name=pass_decoder(
+                                                  os.environ.get(f'{database}_SERVICE_NAME')),
+                                              port=port
+                                              )
+    return database_connection
+
 if __name__ == "__main__":
+    # database_connection = get_db_connection('kpi', 'dwh_sd')
+    # print(database_connection.get_data('select 1 from dual'))
     pass

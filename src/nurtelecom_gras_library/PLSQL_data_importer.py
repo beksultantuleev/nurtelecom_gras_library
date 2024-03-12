@@ -199,7 +199,7 @@ class PLSQL_data_importer():
         self.conn.close()
         self.engine.dispose()
 
-    def upload_pandas_df_to_oracle(self, pandas_df, table_name, geometry_cols=[], batch_size=15000):
+    def upload_pandas_df_to_oracle_experimental(self, pandas_df, table_name, geometry_cols=[], batch_size=15000):
         # Prepare the values string for SQL statement
         values_string_list = [
             f":{i}" if col not in geometry_cols else f"SDO_UTIL.FROM_WKTGEOMETRY(:{i})"
@@ -240,7 +240,7 @@ class PLSQL_data_importer():
             print(f'Error during insertion: {e}')
             raise
 
-    def upload_pandas_df_to_oracle_old(self, pandas_df, table_name, geometry_cols=[]):
+    def upload_pandas_df_to_oracle(self, pandas_df, table_name, geometry_cols=[]):
         values_string_list = [
             f":{i}" if v not in geometry_cols else f"SDO_UTIL.FROM_WKTGEOMETRY(:{i})" for i, v in enumerate(pandas_df, start=1)]
         values_string = ', '.join(values_string_list)
@@ -295,7 +295,7 @@ class PLSQL_data_importer():
                 print('oracle connection is closed!')
             raise Exception
 
-    def upsert_from_pandas_df(self, pandas_df, table_name, list_of_keys, sum_update_columns=[], batch_size=15000):
+    def upsert_from_pandas_df_experimental(self, pandas_df, table_name, list_of_keys, sum_update_columns=[], batch_size=15000):
         # Column Lists
         list_of_all_columns = list(pandas_df.columns)
         list_regular_columns = list(
@@ -336,7 +336,7 @@ class PLSQL_data_importer():
         finally:
             self.engine.dispose()
 
-    def upsert_from_pandas_df_old(self, pandas_df, table_name, list_of_keys, sum_update_columns=[]):
+    def upsert_from_pandas_df(self, pandas_df, table_name, list_of_keys, sum_update_columns=[]):
         "connection"
         self.dsn_tns = cx_Oracle.makedsn(
             self.host,
