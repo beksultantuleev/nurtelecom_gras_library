@@ -2,7 +2,7 @@ new version with twine:
 python -m build
 twine upload dist/*
 
-git tag -a vX.X.X -m "Version X.X.X"
+git tag -a v1.3.5 -m "Version 1.3.5"
 git push --tags
 
 

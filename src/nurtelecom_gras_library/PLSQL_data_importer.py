@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy import text
 from nurtelecom_gras_library.additional_functions import measure_time
 
+
 class PLSQL_data_importer():
 
     def __init__(self, user,
@@ -19,6 +20,11 @@ class PLSQL_data_importer():
         self.service_name = service_name
         self.user = user
         self.password = password
+
+        self.dsn_tns = cx_Oracle.makedsn(
+            self.host,
+            self.port,
+            service_name=self.service_name)
 
         self.ENGINE_PATH_WIN_AUTH = f'oracle://{self.user}:{self.password}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={self.host})(PORT={self.port}))(CONNECT_DATA=(SERVICE_NAME={self.service_name})))'
 
@@ -74,9 +80,9 @@ class PLSQL_data_importer():
             raise
 
     def get_data_old(self, query,
-                 remove_column=[],
-                 remove_na=False,
-                 show_logs=False):
+                     remove_column=[],
+                     remove_na=False,
+                     show_logs=False):
         query = text(query)
         'establish connection and return data'
         start = timeit.default_timer()
@@ -114,12 +120,14 @@ class PLSQL_data_importer():
                 for i, partial_df in enumerate(pd.read_sql(query, conn, chunksize=100000)):
                     print(f'Writing chunk "{i}" to "{path}"')
                     if is_csv:
-                        partial_df.to_csv(f, index=False, header=(i == 0), sep=sep)
+                        partial_df.to_csv(
+                            f, index=False, header=(i == 0), sep=sep)
                     else:
                         if i == 0:
                             partial_df.to_json(f, orient='records', lines=True)
                         else:
-                            partial_df.to_json(f, orient='records', lines=True, header=False)
+                            partial_df.to_json(
+                                f, orient='records', lines=True, header=False)
 
         except Exception as e:
             print(f"Error during export: {e}")
@@ -199,47 +207,6 @@ class PLSQL_data_importer():
         self.conn.close()
         self.engine.dispose()
 
-    def upload_pandas_df_to_oracle_experimental(self, pandas_df, table_name, geometry_cols=[], batch_size=15000):
-        # Prepare the values string for SQL statement
-        values_string_list = [
-            f":{i}" if col not in geometry_cols else f"SDO_UTIL.FROM_WKTGEOMETRY(:{i})"
-            for i, col in enumerate(pandas_df.columns, start=1)
-        ]
-        values_string = ', '.join(values_string_list)
-
-        # Convert geometry columns to string if necessary
-        if geometry_cols:
-            for geo_col in geometry_cols:
-                pandas_df[geo_col] = pandas_df[geo_col].astype(str)
-
-        # Prepare the data for insertion
-        pandas_tuple = [tuple(i) for i in pandas_df.to_numpy()]
-        sql_text = f"insert into {table_name} values({values_string})"
-
-        try:
-            # Use existing engine and connection management
-            self.engine = self.get_engine()
-            with self.engine.connect() as conn:
-                rowCount = 0
-                for start_pos in range(0, len(pandas_tuple), batch_size):
-                    data_batch = pandas_tuple[start_pos:start_pos + batch_size]
-                    conn.executemany(sql_text, data_batch)
-                    rowCount += len(data_batch)
-
-                # Update SDO_SRID for geometry columns if necessary
-                if geometry_cols:
-                    for geo_col in geometry_cols:
-                        update_sdo_srid = f"UPDATE {table_name} SET {geo_col}.SDO_SRID = 4326 WHERE {geo_col} IS NOT NULL"
-                        conn.execute(update_sdo_srid)
-                        print(f'SDO_SRID of "{geo_col}" is updated to "4326"')
-
-                print(
-                    f'Number of new added rows in "{table_name}": {rowCount}')
-                self.engine.dispose()
-        except Exception as e:
-            print(f'Error during insertion: {e}')
-            raise
-
     def upload_pandas_df_to_oracle(self, pandas_df, table_name, geometry_cols=[]):
         values_string_list = [
             f":{i}" if v not in geometry_cols else f"SDO_UTIL.FROM_WKTGEOMETRY(:{i})" for i, v in enumerate(pandas_df, start=1)]
@@ -253,10 +220,6 @@ class PLSQL_data_importer():
             pandas_tuple = [tuple(i) for i in pandas_df.values]
             sql_text = f"insert into {table_name} values({values_string})"
             # print(sql_text)
-            self.dsn_tns = cx_Oracle.makedsn(
-                self.host,
-                self.port,
-                service_name=self.service_name)
 
             oracle_conn = cx_Oracle.connect(
                 user=self.user,
@@ -295,59 +258,81 @@ class PLSQL_data_importer():
                 print('oracle connection is closed!')
             raise Exception
 
-    def upsert_from_pandas_df_experimental(self, pandas_df, table_name, list_of_keys, sum_update_columns=[], batch_size=15000):
-        # Column Lists
-        list_of_all_columns = list(pandas_df.columns)
-        list_regular_columns = list(
-            set(list_of_all_columns) - set(list_of_keys))
+    def upload_pandas_df_to_oracle_row(self, pandas_df, table_name, geometry_cols=[]):
+        'uploads row by row using clob'
+        # Prepare values string for the SQL insert statement
+        columns = pandas_df.columns
+        values_string = ', '.join([
+            f"SDO_UTIL.FROM_WKTGEOMETRY(:{i+1})" if col in geometry_cols else f":{i+1}"
+            for i, col in enumerate(columns)
+        ])
+        sql_text = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({values_string})"
 
-        # SQL Query Building
-        column_selection = ',\n'.join(
-            [f'\t:{col} AS {col}' for col in list_of_all_columns])
-        key_conditions = ' AND '.join(
-            [f"t.{key} = s.{key}" for key in list_of_keys])
-        update_selection = ',\n'.join(
-            [f"t.{col} = {'t.' + col + ' + ' if col in sum_update_columns else ''}s.{col}" for col in list_regular_columns])
+        # Convert geometry columns to WKT
+        for geo_col in geometry_cols:
+            pandas_df[geo_col] = pandas_df[geo_col].apply(
+                lambda geom: geom.wkt if geom else None)
 
-        merge_sql = f"""
-        MERGE INTO {table_name} t
-        USING (SELECT {column_selection} FROM dual) s
-        ON ({key_conditions})
-        WHEN MATCHED THEN UPDATE SET {update_selection}
-        WHEN NOT MATCHED THEN INSERT ({', '.join(list_of_all_columns)})
-        VALUES ({', '.join([f"s.{col}" for col in list_of_all_columns])})
-        """
-
-        # Execute Query in Batches
         try:
-            self.engine = self.get_engine()
-            with self.engine.connect() as conn:
-                data_list = pandas_df.to_dict(orient='records')
+            # Establish Oracle connection
+            oracle_conn = cx_Oracle.connect(
+                user=self.user,
+                password=self.password,
+                dsn=self.dsn_tns
+            )
+
+            with oracle_conn.cursor() as oracle_cursor:
                 rowCount = 0
-                for start_pos in range(0, len(data_list), batch_size):
-                    data_batch = data_list[start_pos:start_pos + batch_size]
-                    conn.execute(text(merge_sql), *data_batch)
-                    rowCount += len(data_batch)
+
+                for index, row in pandas_df.iterrows():
+                    bind_row = []
+                    input_sizes = []
+
+                    for col, value in zip(columns, row):
+                        if col in geometry_cols and value is not None:
+                            clob_var = oracle_cursor.var(cx_Oracle.CLOB)
+                            clob_var.setvalue(0, value)
+                            bind_row.append(clob_var)
+                            input_sizes.append(cx_Oracle.CLOB)
+                        else:
+                            bind_row.append(value)
+                            input_sizes.append(None)
+
+                    try:
+                        # Set input sizes for the row
+                        oracle_cursor.setinputsizes(*input_sizes)
+                        oracle_cursor.execute(sql_text, tuple(bind_row))
+                        rowCount += 1
+                        oracle_conn.commit()
+                        print(f'number of added rows so far> {rowCount}')
+                    except cx_Oracle.DatabaseError as e:
+                        error, = e.args
+                        print(
+                            f"Error at row {index}: Oracle-Error-Code: {error.code}, Oracle-Error-Message: {error.message}")
+                        continue
+                if len(geometry_cols) != 0:
+                    for geo_col in geometry_cols:
+                        update_sdo_srid = f'''UPDATE {table_name} T
+                                    SET T.{geo_col}.SDO_SRID = 4326
+                                    WHERE T.{geo_col} IS NOT NULL'''
+                        oracle_cursor.execute(update_sdo_srid)
+                        print(f'SDO_SRID of "{geo_col}" is updated to "4326" ')
+                    oracle_conn.commit()
                 print(
-                    f'Number of rows processed in "{table_name}": {rowCount}')
+                    f'Number of new added rows in "{table_name}": {rowCount}')
+
         except Exception as e:
-            print(f'Error during upsert: {e}')
+            print('Error during insertion')
+            print(str(e))
             raise
         finally:
-            self.engine.dispose()
+            if oracle_conn:
+                oracle_conn.close()
+                print('Oracle connection is closed!')
 
     def upsert_from_pandas_df(self, pandas_df, table_name, list_of_keys, sum_update_columns=[]):
         "connection"
-        self.dsn_tns = cx_Oracle.makedsn(
-            self.host,
-            self.port,
-            service_name=self.service_name)
 
-        oracle_conn = cx_Oracle.connect(
-            user=self.user,
-            password=self.password,
-            dsn=self.dsn_tns
-        )
         # dsn_tns = cx_Oracle.makedsn(host, port, service)
         # oracle_conn = cx_Oracle.connect(user=user, password=passwd, dsn=dsn_tns)
         "create query "
@@ -394,6 +379,11 @@ class PLSQL_data_importer():
         # cursor.executemany(merge_sql, data_list)
         ####
         try:
+            oracle_conn = cx_Oracle.connect(
+                user=self.user,
+                password=self.password,
+                dsn=self.dsn_tns
+            )
             with oracle_conn.cursor() as oracle_cursor:
                 rowCount = 0
                 start_pos = 0
