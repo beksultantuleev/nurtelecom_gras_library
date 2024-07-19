@@ -260,12 +260,12 @@ class PLSQL_data_importer():
                 print('oracle connection is closed!')
             raise Exception
 
-    def upload_pandas_df_to_oracle_row(self, pandas_df, table_name, geometry_cols=[], srid = 4326):
+    def upload_pandas_df_to_oracle_row(self, pandas_df, table_name, geometry_cols=[], srid=4326):
         'uploads row by row using clob'
         # Prepare values string for the SQL insert statement
         columns = pandas_df.columns
         values_string = ', '.join([
-            f"SDO_UTIL.FROM_WKTGEOMETRY(:{i+1}, {srid})" if col in geometry_cols else f":{i+1}"
+            f"SDO_GEOMETRY(:{i+1}, {srid})" if col in geometry_cols else f":{i+1}"
             for i, col in enumerate(columns)
         ])
         sql_text = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({values_string})"
@@ -273,7 +273,8 @@ class PLSQL_data_importer():
         # Convert geometry columns to WKT
         for geo_col in geometry_cols:
             pandas_df[geo_col] = pandas_df[geo_col].apply(
-                lambda geom: geom.wkt if geom else None)
+                lambda geom: geom.wkt if geom else None
+            )
 
         try:
             # Establish Oracle connection
@@ -306,28 +307,31 @@ class PLSQL_data_importer():
                         oracle_cursor.execute(sql_text, tuple(bind_row))
                         rowCount += 1
                         oracle_conn.commit()
-                        print(f'number of added rows so far> {rowCount}')
+                        print(f'Number of added rows so far: {rowCount}')
                     except cx_Oracle.DatabaseError as e:
                         error, = e.args
                         print(
                             f"Error at row {index}: Oracle-Error-Code: {error.code}, Oracle-Error-Message: {error.message}")
                         continue
-                'do not need anymore'
+                'no need anymore'
                 # if len(geometry_cols) != 0:
                 #     for geo_col in geometry_cols:
-                #         update_sdo_srid = f'''UPDATE {table_name} T
-                #                     SET T.{geo_col}.SDO_SRID = {srid}
-                #                     WHERE T.{geo_col} IS NOT NULL'''
+                #         update_sdo_srid = f'''
+                #             UPDATE {table_name} T
+                #             SET T.{geo_col}.SDO_SRID = {srid}
+                #             WHERE T.{geo_col} IS NOT NULL
+                #         '''
                 #         oracle_cursor.execute(update_sdo_srid)
-                #         print(f'SDO_SRID of "{geo_col}" is updated to "{srid}" ')
+                #         print(f'SDO_SRID of "{geo_col}" is updated to "{srid}"')
                 #     oracle_conn.commit()
-                print(
-                    f'Number of new added rows in "{table_name}": {rowCount}')
+
+                print(f'Number of new added rows in "{table_name}": {rowCount}')
 
         except Exception as e:
             print('Error during insertion')
             print(str(e))
             raise
+
         finally:
             if oracle_conn:
                 oracle_conn.close()
