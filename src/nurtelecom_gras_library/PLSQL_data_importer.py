@@ -242,14 +242,15 @@ class PLSQL_data_importer():
                 print(
                     f'number of new added rows in "{table_name}" >>{rowCount}')
                 oracle_conn.commit()
-                if len(geometry_cols) != 0:
-                    for geo_col in geometry_cols:
-                        update_sdo_srid = f'''UPDATE {table_name} T
-                                    SET T.{geo_col}.SDO_SRID = {srid}
-                                    WHERE T.{geo_col} IS NOT NULL'''
-                        oracle_cursor.execute(update_sdo_srid)
-                        print(f'SDO_SRID of "{geo_col}" is updated to "{srid}" ')
-                    oracle_conn.commit()
+                'do not need further part anymore'
+                # if len(geometry_cols) != 0:
+                #     for geo_col in geometry_cols:
+                #         update_sdo_srid = f'''UPDATE {table_name} T
+                #                     SET T.{geo_col}.SDO_SRID = {srid}
+                #                     WHERE T.{geo_col} IS NOT NULL'''
+                #         oracle_cursor.execute(update_sdo_srid)
+                #         print(f'SDO_SRID of "{geo_col}" is updated to "{srid}" ')
+                #     oracle_conn.commit()
 
         except:
             print('Error during insertion')
@@ -311,14 +312,15 @@ class PLSQL_data_importer():
                         print(
                             f"Error at row {index}: Oracle-Error-Code: {error.code}, Oracle-Error-Message: {error.message}")
                         continue
-                if len(geometry_cols) != 0:
-                    for geo_col in geometry_cols:
-                        update_sdo_srid = f'''UPDATE {table_name} T
-                                    SET T.{geo_col}.SDO_SRID = {srid}
-                                    WHERE T.{geo_col} IS NOT NULL'''
-                        oracle_cursor.execute(update_sdo_srid)
-                        print(f'SDO_SRID of "{geo_col}" is updated to "{srid}" ')
-                    oracle_conn.commit()
+                'do not need anymore'
+                # if len(geometry_cols) != 0:
+                #     for geo_col in geometry_cols:
+                #         update_sdo_srid = f'''UPDATE {table_name} T
+                #                     SET T.{geo_col}.SDO_SRID = {srid}
+                #                     WHERE T.{geo_col} IS NOT NULL'''
+                #         oracle_cursor.execute(update_sdo_srid)
+                #         print(f'SDO_SRID of "{geo_col}" is updated to "{srid}" ')
+                #     oracle_conn.commit()
                 print(
                     f'Number of new added rows in "{table_name}": {rowCount}')
 
