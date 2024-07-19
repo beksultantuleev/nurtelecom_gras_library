@@ -207,9 +207,10 @@ class PLSQL_data_importer():
         self.conn.close()
         self.engine.dispose()
 
-    def upload_pandas_df_to_oracle(self, pandas_df, table_name, geometry_cols=[]):
+    def upload_pandas_df_to_oracle(self, pandas_df, table_name, geometry_cols=[], srid = 4326):
         values_string_list = [
-            f":{i}" if v not in geometry_cols else f"SDO_UTIL.FROM_WKTGEOMETRY(:{i})" for i, v in enumerate(pandas_df, start=1)]
+            f":{i}" if v not in geometry_cols else f"SDO_GEOMETRY(:{i}, {srid})" for i, v in enumerate(pandas_df.columns, start=1)
+        ]
         values_string = ', '.join(values_string_list)
         if len(geometry_cols) != 0:
             for geo_col in geometry_cols:
@@ -244,10 +245,10 @@ class PLSQL_data_importer():
                 if len(geometry_cols) != 0:
                     for geo_col in geometry_cols:
                         update_sdo_srid = f'''UPDATE {table_name} T
-                                    SET T.{geo_col}.SDO_SRID = 4326
+                                    SET T.{geo_col}.SDO_SRID = {srid}
                                     WHERE T.{geo_col} IS NOT NULL'''
                         oracle_cursor.execute(update_sdo_srid)
-                        print(f'SDO_SRID of "{geo_col}" is updated to "4326" ')
+                        print(f'SDO_SRID of "{geo_col}" is updated to "{srid}" ')
                     oracle_conn.commit()
 
         except:
@@ -258,12 +259,12 @@ class PLSQL_data_importer():
                 print('oracle connection is closed!')
             raise Exception
 
-    def upload_pandas_df_to_oracle_row(self, pandas_df, table_name, geometry_cols=[]):
+    def upload_pandas_df_to_oracle_row(self, pandas_df, table_name, geometry_cols=[], srid = 4326):
         'uploads row by row using clob'
         # Prepare values string for the SQL insert statement
         columns = pandas_df.columns
         values_string = ', '.join([
-            f"SDO_UTIL.FROM_WKTGEOMETRY(:{i+1})" if col in geometry_cols else f":{i+1}"
+            f"SDO_UTIL.FROM_WKTGEOMETRY(:{i+1}, {srid})" if col in geometry_cols else f":{i+1}"
             for i, col in enumerate(columns)
         ])
         sql_text = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({values_string})"
@@ -313,10 +314,10 @@ class PLSQL_data_importer():
                 if len(geometry_cols) != 0:
                     for geo_col in geometry_cols:
                         update_sdo_srid = f'''UPDATE {table_name} T
-                                    SET T.{geo_col}.SDO_SRID = 4326
+                                    SET T.{geo_col}.SDO_SRID = {srid}
                                     WHERE T.{geo_col} IS NOT NULL'''
                         oracle_cursor.execute(update_sdo_srid)
-                        print(f'SDO_SRID of "{geo_col}" is updated to "4326" ')
+                        print(f'SDO_SRID of "{geo_col}" is updated to "{srid}" ')
                     oracle_conn.commit()
                 print(
                     f'Number of new added rows in "{table_name}": {rowCount}')
