@@ -9,8 +9,7 @@ import os
 import shapely.wkt as wkt
 from shapely.geometry import MultiPolygon
 from sqlalchemy.engine import create_engine
-from sqlalchemy import update
-from sqlalchemy import text
+from sqlalchemy import update, text
 from nurtelecom_gras_library.PLSQL_data_importer import PLSQL_data_importer
 from nurtelecom_gras_library.additional_functions import measure_time
 

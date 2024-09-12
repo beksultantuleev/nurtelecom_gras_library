@@ -2,10 +2,10 @@ import cx_Oracle
 import pandas as pd
 import timeit
 from sqlalchemy.engine import create_engine
-from sqlalchemy import update
-from sqlalchemy import text
+from sqlalchemy import update, text
 from nurtelecom_gras_library.additional_functions import measure_time
-
+import csv
+import json
 
 class PLSQL_data_importer():
 
@@ -103,8 +103,9 @@ class PLSQL_data_importer():
         return data
 
     @measure_time
-    def export_to_file(self, query, path, is_csv=True, sep=';'):
+    def export_to_file(self, query, path, is_csv=True, sep=',', encoding='utf-8'):
         """
+        encoding='utf-8-sig' if Cyrillic 
         Export data from a database query to a file in CSV or JSON format.
 
         :param query: SQL query to export data
@@ -121,7 +122,7 @@ class PLSQL_data_importer():
                     print(f'Writing chunk "{i}" to "{path}"')
                     if is_csv:
                         partial_df.to_csv(
-                            f, index=False, header=(i == 0), sep=sep)
+                            f, index=False, header=(i == 0), sep=sep, encoding = encoding)
                     else:
                         if i == 0:
                             partial_df.to_json(f, orient='records', lines=True)
@@ -130,6 +131,72 @@ class PLSQL_data_importer():
                                 f, orient='records', lines=True, header=False)
 
         except Exception as e:
+            print(f"Error during export: {e}")
+            raise
+
+    @measure_time
+    def export_to_file_oracle(self, query, path, is_csv=True, sep=',', encoding='utf-8', chunk_size=1000):
+        """
+        Export data from an Oracle database query to a file using cx_Oracle and csv module, with progress tracking.
+
+        :param query: SQL query to export data
+        :param path: File path to export the data
+        :param is_csv: Boolean flag to determine if the output should be CSV (default) or JSON
+        :param sep: Separator for CSV file, defaults to ','
+        :param encoding: Encoding format to be used for writing the file, defaults to 'utf-8'
+        :param chunk_size: Number of rows to process at a time, default is 1000
+        """
+        try:
+            # Establish Oracle connection
+            connection = cx_Oracle.connect(
+                user=self.user,
+                password=self.password,
+                dsn=self.dsn_tns
+            )
+            cursor = connection.cursor()
+
+            # Execute the query
+            cursor.execute(query)
+
+            # Open file for writing
+            with open(path, 'w', newline='', encoding=encoding) as f:
+                writer = None
+                if is_csv:
+                    writer = csv.writer(f, delimiter=sep)
+
+                # Write headers
+                if is_csv:
+                    column_names = [col[0] for col in cursor.description]
+                    writer.writerow(column_names)
+
+                # Initialize row counter
+                row_count = 0
+                chunk_count = 0
+
+                # Write rows in chunks to track progress
+                while True:
+                    rows = cursor.fetchmany(chunk_size)
+                    if not rows:
+                        break  # No more rows to fetch
+
+                    chunk_count += 1
+                    row_count += len(rows)
+
+                    if is_csv:
+                        writer.writerows(rows)
+                    else:
+                        for row in rows:
+                            json_data = {column_names[i]: value for i, value in enumerate(row)}
+                            f.write(json.dumps(json_data) + '\n')
+
+                    print(f"Chunk {chunk_count} written, {len(rows)} rows in this chunk, {row_count} total rows written.")
+
+            cursor.close()
+            connection.close()
+
+            print(f"Export complete. {row_count} rows written in {chunk_count} chunks.")
+
+        except cx_Oracle.DatabaseError as e:
             print(f"Error during export: {e}")
             raise
 
