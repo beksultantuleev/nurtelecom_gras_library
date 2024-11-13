@@ -3,7 +3,7 @@ from nurtelecom_gras_library.PLSQL_geodata_importer import PLSQL_geodata_importe
 from nurtelecom_gras_library.additional_functions import *
 
 
-def get_db_connection(user, database, all_cred_dict=None, geodata=False):
+def get_db_connection(user, database, all_cred_dict=get_all_cred_dict(), geodata=False):
     user = user.upper()
     database = database.upper()
     if all_cred_dict:
