@@ -9,6 +9,7 @@ from email.policy import SMTP
 import timeit
 import requests
 import base64
+import hvac
 
 def insert_from_pandas(data, counter, list_of_column_names, full_data_length=None):
     '''
@@ -284,6 +285,19 @@ def voronoi_split(poly_figure, coords_list, buffer_value=2000, boundary_value=10
 
     return result
 
+def get_all_cred_dict(vault_url = pass_decoder(os.environ.get(f'VAULT_LINK_URL')), vault_token = pass_decoder(os.environ.get(f'VAULT_TKN')), path_to_secret = pass_decoder(os.environ.get(f'PATH_TO_SECRET_VLT')), mount_point = pass_decoder(os.environ.get(f'MOUNT_POINT_VLT'))):
+    '''
+    all_cred_dict = get_all_cred_dict(
+        vault_url=url, vault_token=token, path_to_secret='xxx', mount_point='xxx')
+    '''
+    client = hvac.Client(url=vault_url, token=vault_token)
+    authenticated_status = client.is_authenticated()
+    if authenticated_status:
+        raw_resonse = client.secrets.kv.read_secret_version(
+            path=path_to_secret, mount_point=mount_point, raise_on_deleted_version=True)
+        all_cred_dict = raw_resonse['data']['data']
+        return all_cred_dict
+    return None
 
 
 if __name__ == "__main__":

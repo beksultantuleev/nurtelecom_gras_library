@@ -137,6 +137,7 @@ class PLSQL_data_importer():
     @measure_time
     def export_to_file_oracle(self, query, path, is_csv=True, sep=',', encoding='utf-8', chunk_size=1000):
         """
+        utf-8-sig for Cyrillic  
         Export data from an Oracle database query to a file using cx_Oracle and csv module, with progress tracking.
 
         :param query: SQL query to export data

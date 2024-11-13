@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nurtelecom_gras_library"
-version = "1.4.0"
+version = "1.5.0"
 description = "Official Nurtelecom gras library"
 readme = "README.md"
 authors = [
-    { name = "Beksultan Tuleev", email = "kazamabeks@gmail.com" }
+    { name = "Beksultan Tuleev", email = "beksultan.tuleev.ds@gmail.com" }
 ]
 license = { file="LICENSE" }
 classifiers = [
@@ -33,7 +33,9 @@ dependencies = [
     "openpyxl",
     "tabulate",
     "requests",
-    "transliterate"
+    "transliterate",
+    "hvac"
+
 ]
 
 [tool.setuptools]
