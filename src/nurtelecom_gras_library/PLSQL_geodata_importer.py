@@ -1,7 +1,6 @@
 from logging import exception
 from operator import index
-# from matplotlib.pyplot import cla
-import cx_Oracle
+import oracledb
 import pandas as pd
 import geopandas as gpd
 import timeit
@@ -28,8 +27,10 @@ class PLSQL_geodata_importer(PLSQL_data_importer):
 
         try:
             query = text(query)
+            engine = self.get_engine()
+
             # Using context manager for connection
-            with create_engine(self.ENGINE_PATH_WIN_AUTH).connect() as conn:
+            with engine.connect() as conn:
                 data = pd.read_sql(query, con=conn)
                 data.columns = data.columns.str.lower()
 
@@ -42,6 +43,11 @@ class PLSQL_geodata_importer(PLSQL_data_importer):
                             lambda x: wkt.loads(str(x)))
 
                 if use_geopandas:
+                    '''wkt from the oracle in proprietary object format.
+            we need to convert it to string and further converted to 
+            shapely geometry using wkt.loads. Geopandas has to contain
+            "geometry" column, therefore previous names have to be renamed.
+            CRS has to be applied to have proper geopandas dataframe'''
                     for geom_colum in geom_columns_list:
                         data[geom_colum] = data[geom_colum].apply(
                             lambda x: wkt.loads(str(x)))
@@ -57,52 +63,6 @@ class PLSQL_geodata_importer(PLSQL_data_importer):
         except Exception as e:
             print(f"Error during data retrieval: {e}")
             raise
-
-    @measure_time
-    def get_data_old(self, query,
-                     use_geopandas=False,
-                     geom_column='geometry',
-                     point_columns=[],
-                     remove_column=[],
-                     remove_na=False,
-                     show_logs=False):
-        query = text(query)
-        'establish connection and return data'
-        start = timeit.default_timer()
-
-        self.engine = create_engine(self.ENGINE_PATH_WIN_AUTH)
-        self.conn = self.engine.connect()
-
-        data = pd.read_sql(query, con=self.conn)
-        data.columns = data.columns.str.lower()
-        data = data.drop(remove_column, axis=1)
-        if remove_na:
-            data = data.dropna()
-        if len(point_columns) != 0:
-            for column in point_columns:
-                data[column] = data[column].astype(str)
-                data[column] = data[column].apply(
-                    wkt.loads)
-        if use_geopandas:
-            '''wkt from the oracle in proprietary object format.
-            we need to convert it to string and further converted to 
-            shapely geometry using wkt.loads. Geopandas has to contain
-            "geometry" column, therefore previous names have to be renamed.
-            CRS has to be applied to have proper geopandas dataframe'''
-            data[geom_column] = data[geom_column].astype(str)
-            # print(data[geom_column])
-            data[geom_column] = data[geom_column].apply(
-                wkt.loads)  # .apply(MultiPolygon)
-
-            data.rename(columns={geom_column: 'geometry'}, inplace=True)
-            data = gpd.GeoDataFrame(data=data, crs="EPSG:4326")
-        stop = timeit.default_timer()
-        if show_logs:
-            print(data.head())
-            print(f"end, time is {(stop - start) / 60:.2f} min")
-        self.conn.close()
-        self.engine.dispose()
-        return data
 
 
 if __name__ == "__main__":
