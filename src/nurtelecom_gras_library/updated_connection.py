@@ -7,14 +7,14 @@ def get_db_connection(user, database, all_cred_dict=get_all_cred_dict(), geodata
     user = user.upper()
     database = database.upper()
     if all_cred_dict:
-        if geodata:
-            database_connection = PLSQL_geodata_importer(user=user,
+        database_connection = PLSQL_data_importer(user=user,
                                                   password=all_cred_dict[f'{user}_{database}'],
                                                   host=all_cred_dict[f'{database}_IP'],
                                                   service_name=all_cred_dict[f'{database}_SERVICE_NAME'],
                                                   port=all_cred_dict[f'{database}_PORT'],
                                                   )
-        database_connection = PLSQL_data_importer(user=user,
+        if geodata:
+            database_connection = PLSQL_geodata_importer(user=user,
                                                   password=all_cred_dict[f'{user}_{database}'],
                                                   host=all_cred_dict[f'{database}_IP'],
                                                   service_name=all_cred_dict[f'{database}_SERVICE_NAME'],
