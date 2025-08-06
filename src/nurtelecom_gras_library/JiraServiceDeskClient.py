@@ -2,6 +2,7 @@ from typing import Optional, Union
 import requests
 import os
 from requests.auth import HTTPBasicAuth
+import pandas as pd
 
 class JiraServiceDeskClient:
     def __init__(
@@ -205,6 +206,95 @@ class JiraServiceDeskClient:
         if resp.status_code not in (200, 201, 204):
             raise Exception(
                 f"❌ Ошибка добавления пользователя {login} в заявку {issue_key}: {resp.status_code}, {resp.text}")
+
+    def fetch_all_issues(self, JQL, batch_size=50):
+        all_issues = []
+        start_at = 0
+
+        while True:
+            params = {
+                "jql": JQL,
+                "startAt": start_at,
+                "maxResults": batch_size
+            }
+
+            response = requests.get(
+                f"{self.base_url}/rest/api/2/search", headers=self.headers, params=params, auth=self.auth)
+            if response.status_code != 200:
+                print(
+                    f"❌ Failed to fetch issues at startAt={start_at}: {response.status_code}")
+                print(response.text)
+                break
+
+            data = response.json()
+            issues = data.get("issues", [])
+            all_issues.extend(issues)
+
+            if start_at + batch_size >= data.get("total", 0):
+                break
+            print(f'retrieved {start_at}')
+            start_at += batch_size
+        return all_issues
+
+    def get_fields_summary(self, issues: list[dict]) -> dict:
+        """
+        Extracts a dictionary where each key is a top-level field in 'fields',
+        and the value is a set of all sub-keys found for that field across all issues.
+        For fields that are not dicts, the value will be an empty set.
+
+        Returns:
+            dict: {field_name: set(sub_keys)}
+        """
+        summary = {}
+        for issue in issues:
+            fields = issue.get("fields", {})
+            for key, value in fields.items():
+                if key not in summary:
+                    summary[key] = set()
+                if isinstance(value, dict):
+                    summary[key].update(value.keys())
+        return summary
+
+    def get_issues_df(self, issues, field_map):
+        """
+        Processes a list of Jira issues and returns a DataFrame with columns as specified in field_map.
+        field_map is a dict where:
+            - key: field in Jira (e.g., 'summary', 'created', 'status')
+            - value: 
+                - None: take the field as is (from issue['fields'][key])
+                - str: subkey to extract from a dict field (e.g., 'status':'name' extracts issue['fields']['status']['name'])
+                - dict: subkeys to extract from a dict field (e.g., 'status': {'self': None, 'statusCategory': None})
+                - 'Key': special value to extract the issue key
+
+        Args:
+            issues (list): List of Jira issue dicts.
+            field_map (dict): Mapping of Jira field names to DataFrame column names or subkeys.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the selected fields for each issue.
+        """
+        data = []
+        for issue in issues:
+            row = {}
+            for field, subkey in field_map.items():
+                if field == 'Key':
+                    row['Key'] = issue.get('key')
+                elif subkey is None:
+                    row[field] = issue.get('fields', {}).get(field)
+                elif isinstance(subkey, str):
+                    value = issue.get('fields', {}).get(field)
+                    if isinstance(value, dict):
+                        row[subkey] = value.get(subkey)
+                    else:
+                        row[subkey] = None
+                elif isinstance(subkey, dict):
+                    value = issue.get('fields', {}).get(field, {})
+                    for subfield in subkey:
+                        row[subfield] = value.get(subfield)
+            data.append(row)
+        if data:
+            df = pd.DataFrame(data)
+            return df
 
 
 if __name__ == "__main__":

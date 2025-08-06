@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nurtelecom_gras_library"
-version = "2.1.0"
+version = "2.1.1"
 description = "Official Nurtelecom DSML library"
 readme = "README.md"
 authors = [
@@ -27,6 +27,7 @@ urls = { "Homepage" = "https://github.com/beksultantuleev/nurtelecom_gras_librar
 dependencies = [
     "oracledb",
     "pandas",
+    "python-dotenv",
     "geopandas",
     "sqlalchemy",
     "openpyxl",
