@@ -10,7 +10,7 @@ setup(
     version='1.2.3',
     license='MIT',
     author="Beksultan Tuleev",
-    author_email='kazamabeks@gmail.com',
+    author_email='beksultan.tuleev.ds@gmail.com',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     url='https://github.com/beksultantuleev/nurtelecom_gras_library.git',

@@ -11,18 +11,7 @@ import requests
 import base64
 import hvac
 
-def insert_from_pandas(data, counter, list_of_column_names, full_data_length=None):
-    '''
-    function is depricated
 
-    data is dataframe
-    counter - counter of a row
-    list_of_column_names - columns to incert into table'''
-    modified_query = "".join(
-        "," + f"'{data[i][counter]}'" for i in list_of_column_names)[1:]
-    if full_data_length != None:
-        print(f'Inserting... ({counter/full_data_length*100:.2f}%)')
-    return modified_query
 
 def get_list_of_objects(path, is_dir=False):
     'to get list of files in certain directory'
@@ -58,7 +47,7 @@ def value_extractor(pattern, path):
                 value = float(i[len(pattern):])
                 return value
 
-def make_table_query_from_pandas(df, table_name, varchar_len=500, list_num_columns=[], list_date_columns=[], list_geometry_columns = [], list_clob_columns=[]):
+def make_table_query_from_pandas_old(df, table_name, varchar_len=500, list_num_columns=[], list_date_columns=[], list_geometry_columns = [], list_clob_columns=[]):
     query_for_creating_table = f'CREATE TABLE {table_name} (\n'
     for column in df:
         column = f"{column}"[:25]
@@ -76,6 +65,156 @@ def make_table_query_from_pandas(df, table_name, varchar_len=500, list_num_colum
             query_for_creating_table += f"""{column} \t varchar2({varchar_len}),\n"""
     query_for_creating_table = query_for_creating_table[:-2]
     query_for_creating_table += '\n)'
+    return query_for_creating_table
+
+def make_table_query_from_pandas(
+    df,
+    table_name,
+    varchar_len=500,
+    list_num_columns=[],
+    list_date_columns=[],
+    list_timestamp_columns=[],
+    list_geometry_columns=[],
+    list_clob_columns=[],
+    partition_column=None,
+    partition_type=None,
+    partition_granularity=None,     # 'MONTH', 'DAY', 'HOUR', etc.
+    # e.g., "DATE '2024-01-01'" or "TIMESTAMP '2024-01-01 00:00:00'"
+    partition_start=None,
+    # e.g., "DATE '2025-01-01'" or "TIMESTAMP '2025-01-01 00:00:00'"
+    partition_end=None,
+    partition_interval=None,        # e.g., "INTERVAL '1' MONTH"
+    partition_values=None           # for LIST/HASH
+):
+    """
+    Generate a CREATE TABLE query from a pandas DataFrame with optional partitioning.
+
+    Args:
+        df (pd.DataFrame): DataFrame to generate table from.
+        table_name (str): Name of the table.
+        varchar_len (int): Length for varchar2 columns.
+        list_num_columns (list): Columns to be NUMBER.
+        list_date_columns (list): Columns to be DATE.
+        list_timestamp_columns (list): Columns to be TIMESTAMP.
+        list_geometry_columns (list): Columns to be SDO_GEOMETRY.
+        list_clob_columns (list): Columns to be CLOB.
+        partition_column (str, optional): Column to partition by.
+        partition_type (str, optional): Type of partitioning ('RANGE', 'LIST', 'HASH', 'INTERVAL').
+        partition_granularity (str, optional): For RANGE partitions, e.g., 'MONTH', 'DAY', 'HOUR'.
+        partition_start (str, optional): Start value for RANGE/INTERVAL partitioning.
+        partition_end (str, optional): End value for RANGE/INTERVAL partitioning.
+        partition_interval (str, optional): Interval for INTERVAL partitioning, e.g., "INTERVAL '1' MONTH".
+        partition_values (list, optional): Partition values (for LIST/HASH/RANGE).
+
+    Returns:
+        str: CREATE TABLE query.
+    """
+    query_for_creating_table = f'CREATE TABLE {table_name} (\n'
+    for column in df:
+        column = f"{column}"[:25]
+        if column in list_num_columns:
+            query_for_creating_table += f"""{column} \t number,\n"""
+        elif column in list_date_columns:
+            query_for_creating_table += f"""{column} \t date,\n"""
+        elif column in list_timestamp_columns:
+            query_for_creating_table += f"""{column} \t timestamp,\n"""
+        elif column in list_clob_columns:
+            query_for_creating_table += f"""{column} \t clob,\n"""
+        elif column in list_geometry_columns:
+            query_for_creating_table += f"""{column} \t sdo_geometry,\n"""
+        else:
+            query_for_creating_table += f"""{column} \t varchar2({varchar_len}),\n"""
+    query_for_creating_table = query_for_creating_table[:-2]
+    query_for_creating_table += '\n)'
+
+    # Add partitioning clause if specified
+    if partition_column and partition_type:
+        partition_type = partition_type.upper()
+        # Determine if partition column is date or timestamp for formatting
+        is_timestamp = partition_column in list_timestamp_columns
+        is_date = partition_column in list_date_columns
+
+        def format_partition_value(val):
+            if is_timestamp:
+                if not str(val).startswith("TIMESTAMP"):
+                    # Format: dd.mm.yyyy hh24:mi:ss
+                    try:
+                        dt = pd.to_datetime(val)
+                        return f"TO_TIMESTAMP('{dt.strftime('%d.%m.%Y %H:%M:%S')}', 'DD.MM.YYYY HH24:MI:SS')"
+                    except Exception:
+                        return f"TIMESTAMP '{val}'"
+                return val
+            elif is_date:
+                if not str(val).startswith("DATE"):
+                    try:
+                        dt = pd.to_datetime(val)
+                        return f"TO_DATE('{dt.strftime('%d.%m.%Y')}', 'DD.MM.YYYY')"
+                    except Exception:
+                        return f"DATE '{val}'"
+                return val
+            return str(val)
+
+        if partition_type == 'RANGE':
+            if partition_granularity and partition_start and partition_end:
+                # Use automatic interval partitioning (Oracle 11g+)
+                if partition_interval:
+                    query_for_creating_table += (
+                        f"\nPARTITION BY RANGE ({partition_column})\n"
+                        f"INTERVAL ({partition_interval}) (\n"
+                        f"  PARTITION p_start VALUES LESS THAN ({format_partition_value(partition_start)})\n)"
+                    )
+                else:
+                    # Manual partitions for each period
+                    # Remove DATE/TIMESTAMP/TO_DATE/TO_TIMESTAMP prefix for pd.date_range
+                    def clean_val(val):
+                        for prefix in ["DATE '", "TIMESTAMP '", "TO_DATE('", "TO_TIMESTAMP('"]:
+                            if val.startswith(prefix):
+                                val = val[len(prefix):]
+                                if val.endswith("')"):
+                                    val = val[:-2]
+                                elif val.endswith("'"):
+                                    val = val[:-1]
+                        return val
+                    start_val = clean_val(str(partition_start))
+                    end_val = clean_val(str(partition_end))
+                    freq_map = {'MONTH': 'M', 'DAY': 'D', 'HOUR': 'H'}
+                    freq = freq_map.get(
+                        partition_granularity.upper(), partition_granularity[0])
+                    periods = pd.date_range(
+                        start=start_val,
+                        end=end_val,
+                        freq=freq
+                    )
+                    partitions = []
+                    for i, dt in enumerate(periods[1:]):
+                        if is_timestamp:
+                            val = f"TO_TIMESTAMP('{dt.strftime('%d.%m.%Y %H:%M:%S')}', 'DD.MM.YYYY HH24:MI:SS')"
+                        elif is_date:
+                            val = f"TO_DATE('{dt.strftime('%d.%m.%Y')}', 'DD.MM.YYYY')"
+                        else:
+                            val = f"'{dt}'"
+                        partitions.append(
+                            f"PARTITION p{i+1} VALUES LESS THAN ({val})")
+                    query_for_creating_table += (
+                        f"\nPARTITION BY RANGE ({partition_column}) (\n  " +
+                        ",\n  ".join(partitions) + "\n)"
+                    )
+            elif partition_values:
+                partitions = ',\n  '.join(
+                    [f"PARTITION p{i+1} VALUES LESS THAN ({format_partition_value(v)})" for i, v in enumerate(
+                        partition_values)]
+                )
+                query_for_creating_table += f"\nPARTITION BY RANGE ({partition_column}) (\n  {partitions}\n)"
+        elif partition_type == 'LIST' and partition_values:
+            partitions = ',\n  '.join(
+                [f"PARTITION p{i+1} VALUES ({', '.join(map(format_partition_value, vals))})" for i,
+                 vals in enumerate(partition_values)]
+            )
+            query_for_creating_table += f"\nPARTITION BY LIST ({partition_column}) (\n  {partitions}\n)"
+        elif partition_type == 'HASH':
+            query_for_creating_table += f"\nPARTITION BY HASH ({partition_column})"
+        # else: ignore or raise error for unsupported/invalid config
+
     return query_for_creating_table
 
 def send_telegram_msg(payload, receiver, database_connector):

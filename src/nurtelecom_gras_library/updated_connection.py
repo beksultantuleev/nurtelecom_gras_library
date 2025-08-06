@@ -1,51 +1,34 @@
-from nurtelecom_gras_library.PLSQL_data_importer import PLSQL_data_importer
-from nurtelecom_gras_library.PLSQL_geodata_importer import PLSQL_geodata_importer
+from nurtelecom_gras_library.OracleDataRetriever import OracleDataRetriever
+from nurtelecom_gras_library.OracleGeoDataImporter import OracleGeoDataImporter
 from nurtelecom_gras_library.additional_functions import *
 
 
-def get_db_connection(user, database, all_cred_dict=get_all_cred_dict(), geodata=False):
+def get_db_connection(user, database, all_cred_dict=None, geodata=False):
+    """
+    Returns a database connection object for the specified user and database.
+    If geodata is True, returns an OracleGeoDataImporter, otherwise OracleDataRetriever.
+    """
     user = user.upper()
     database = database.upper()
-    if all_cred_dict:
-        database_connection = PLSQL_data_importer(user=user,
-                                                  password=all_cred_dict[f'{user}_{database}'],
-                                                  host=all_cred_dict[f'{database}_IP'],
-                                                  service_name=all_cred_dict[f'{database}_SERVICE_NAME'],
-                                                  port=all_cred_dict[f'{database}_PORT'],
-                                                  )
-        if geodata:
-            database_connection = PLSQL_geodata_importer(user=user,
-                                                  password=all_cred_dict[f'{user}_{database}'],
-                                                  host=all_cred_dict[f'{database}_IP'],
-                                                  service_name=all_cred_dict[f'{database}_SERVICE_NAME'],
-                                                  port=all_cred_dict[f'{database}_PORT'],
-                                                  )
-        return database_connection
-    'for legacy connection. will be removed later'
-    database_connection = PLSQL_data_importer(user=user,
-                                              password=pass_decoder(
-                                                  os.environ.get(f'{user}_{database}')),
-                                              host=pass_decoder(
-                                                  os.environ.get(f'{database}_IP')),
-                                              service_name=pass_decoder(
-                                                  os.environ.get(f'{database}_SERVICE_NAME')),
-                                              port=pass_decoder(
-                                                  os.environ.get(f'{database}_PORT')),
-                                              )
-    if geodata:
-        database_connection = PLSQL_geodata_importer(user=user,
-                                                     password=pass_decoder(
-                                                         os.environ.get(f'{user}_{database}')),
-                                                     host=pass_decoder(
-                                                         os.environ.get(f'{database}_IP')),
-                                                     service_name=pass_decoder(
-                                                         os.environ.get(f'{database}_SERVICE_NAME')),
-                                                     port=pass_decoder(
-                                                         os.environ.get(f'{database}_PORT')),
-                                                     )
+    if all_cred_dict is None:
+        all_cred_dict = get_all_cred_dict()
 
-    return database_connection
+    try:
+        password = all_cred_dict[f'{user}_{database}']
+        host = all_cred_dict[f'{database}_IP']
+        service_name = all_cred_dict[f'{database}_SERVICE_NAME']
+        port = all_cred_dict[f'{database}_PORT']
+    except KeyError as e:
+        raise ValueError(f"Missing credential for {e.args[0]}") from e
 
+    connection_class = OracleGeoDataImporter if geodata else OracleDataRetriever
+    return connection_class(
+        user=user,
+        password=password,
+        host=host,
+        service_name=service_name,
+        port=port,
+    )
 
 if __name__ == "__main__":
     database_connection = get_db_connection('kpi', 'dwh_sd')
