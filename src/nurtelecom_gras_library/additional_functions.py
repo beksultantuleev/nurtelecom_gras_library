@@ -252,6 +252,9 @@ def send_file_via_telegram(token, chat_id, path_to_file, proxies=None, captions=
     if verbose:
         print(f'"{path_to_file}" has been sent to chat_id: "{chat_id}"')
 
+    return response.json()
+
+
 def send_photo_via_telegram(token, chat_id, path_to_photo, proxies = None, captions=None, verbose=False, parse_mode='html'):
     files = {
         'photo': open(path_to_photo, 'rb'),
@@ -263,6 +266,9 @@ def send_photo_via_telegram(token, chat_id, path_to_photo, proxies = None, capti
         f'https://api.telegram.org/bot{token}/sendPhoto', files=files, data=data, proxies=proxies)
     if verbose:
         print(f'"{path_to_photo}" has been sent to chat_id: "{chat_id}" with caption: "{captions}"')
+    
+    return response.json()
+
 
 def send_msg_via_telegram(token, chat_id, msg_text, proxies = None, parse_mode='html', verbose = False):
 

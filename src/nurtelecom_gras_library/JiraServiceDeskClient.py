@@ -133,10 +133,8 @@ class JiraServiceDeskClient:
 
     def check_portal_access(self):
         url = f"{self.base_url}/rest/servicedeskapi/servicedesk"
-        headers = {"Accept": "application/json"}
-
         try:
-            response = requests.get(url, headers=headers, auth=self.auth)
+            response = requests.get(url, headers=self.headers, auth=self.auth)
             if response.status_code == 200:
                 print("✅ Доступные порталы и проекты:")
                 data = response.json()
