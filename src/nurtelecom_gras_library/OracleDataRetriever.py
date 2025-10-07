@@ -328,19 +328,23 @@ class OracleDataRetriever():
             raise
 
     def upsert_from_pandas_df(self, pandas_df: pd.DataFrame, table_name: str,
-                              list_of_keys: list, sum_update_columns: list = []) -> None:
+                          list_of_keys: list, clob_columns: list = [], 
+                          sum_update_columns: list = []) -> None:
         """
-        Performs an upsert (merge) operation from a pandas DataFrame to an Oracle table.
+        Performs a upsert (merge) from a pandas DataFrame to an Oracle table,
+        with reliable handling for CLOB data types.
 
         :param pandas_df: DataFrame containing data to upsert
         :param table_name: Target Oracle table name
         :param list_of_keys: List of columns to be used as keys for matching
+        :param clob_columns: List of columns that are of the CLOB data type
         :param sum_update_columns: List of columns where updates should sum existing values with new ones
         """
         list_of_all_columns = pandas_df.columns.tolist()
         list_regular_columns = [
             col for col in list_of_all_columns if col not in list_of_keys]
 
+        # No changes to SQL generation
         column_selection = ',\n'.join(
             [f":{col} AS {col}" for col in list_of_all_columns])
 
@@ -370,8 +374,18 @@ class OracleDataRetriever():
         try:
             with oracledb.connect(user=self.user, password=self.password, dsn=self.dsn) as oracle_conn:
                 with oracle_conn.cursor() as oracle_cursor:
+                    
+                    # --- START OF ADDED CODE ---
+                    # Create a type map for setinputsizes. Default to None.
+                    type_map = {col: oracledb.DB_TYPE_CLOB for col in clob_columns}
+                    
+                    # Set the input types for all columns, specifying CLOB where needed.
+                    # This must be done BEFORE executemany.
+                    oracle_cursor.setinputsizes(**type_map)
+                    # --- END OF ADDED CODE ---
+
                     row_count = 0
-                    batch_size = 15000
+                    batch_size = 15000  # Note: smaller batch sizes may be needed for very large CLOBs
                     for i in range(0, len(data_list), batch_size):
                         batch = data_list[i:i + batch_size]
                         oracle_cursor.executemany(merge_sql, batch)

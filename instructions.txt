@@ -1,8 +1,12 @@
 new version with twine:
+
+$env:HTTP_PROXY = "http://xxx"
+$env:HTTPS_PROXY = "http://xxx"
+
 python -m build
 twine upload dist/*
 
-git tag -a v2.1.2 -m "Version 2.1.2"
+git tag -a v2.1.3 -m "Version 2.1.3"
 git push --tags
 
 
