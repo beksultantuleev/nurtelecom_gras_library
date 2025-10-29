@@ -98,6 +98,32 @@ class JiraClient:
             print(f"❌ Error creating project issue: {resp.status_code}, {resp.text}")
             return None
 
+    def update_project_issue_fields(self, issue_key: str, fields: dict) -> bool:
+        """
+        Update fields of an existing Jira issue.
+
+        Args:
+            issue_key (str): The key or ID of the issue to update (e.g., "OPTM-123").
+            fields (dict): A dictionary of fields to update. Example: {"summary": "New summary", "description": "Updated description"}
+
+        Returns:
+            bool: True if update was successful, False otherwise.
+        """
+        url = f"{self.base_url}/rest/api/2/issue/{issue_key}"
+        
+        payload = {
+            "fields": fields
+        }
+        
+        resp = requests.put(url, json=payload, headers=self.headers, auth=self.auth)
+        
+        if resp.status_code == 204:
+            print(f"✅ Issue {issue_key} successfully updated.")
+            return True
+        else:
+            print(f"❌ Failed to update issue {issue_key}: {resp.status_code}, {resp.text}")
+            return False
+
     def add_attachment_to_issue(self, issue_key: str, file_path: str) -> bool:
         """
         Attaches a file to any existing Jira issue (Project or Service Desk).
