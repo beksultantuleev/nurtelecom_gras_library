@@ -46,7 +46,6 @@ class OracleDataRetriever():
                 raise
         return self._engine
 
-    @measure_time
     def get_data(self, query: str, remove_column=None, remove_na: bool = False, show_logs: bool = False) -> pd.DataFrame:
         """
         Retrieve data from the database based on a SQL query.
