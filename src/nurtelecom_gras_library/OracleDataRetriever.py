@@ -230,7 +230,6 @@ class OracleDataRetriever():
             if verbose:
                 print('Connection closed and engine disposed.')
 
-    @measure_time
     def upload_pandas_df_to_oracle(self, pandas_df: pd.DataFrame, table_name: str,
                                    geometry_cols: list = [], srid: int = 4326) -> None:
         """

@@ -6,7 +6,7 @@ $env:HTTPS_PROXY = "http://xxx"
 python -m build
 twine upload dist/*
 
-git tag -a v2.1.6 -m "Version 2.1.6"
+git tag -a v2.1.7 -m "Version 2.1.7"
 git push --tags
 
 
