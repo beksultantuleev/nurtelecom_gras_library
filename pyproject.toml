@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nurtelecom_gras_library"
-version = "2.1.4"
+version = "2.1.5"
 description = "Official Nurtelecom DSML library"
 readme = "README.md"
 authors = [
@@ -33,7 +33,8 @@ dependencies = [
     "openpyxl",
     "requests",
     "transliterate",
-    "hvac"
+    "hvac",
+    "tableauserverclient"
 
 ]
 
