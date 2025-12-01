@@ -8,8 +8,8 @@ from datetime import datetime
 
 class TableauServerManager:
     def __init__(self, login, password,
+                 host: str,
                  server_version='3.9',
-                 host: str = 'https://stat.o.kg',
                  proxies: dict = {}) -> None:
         self.login = login
         self.password = password

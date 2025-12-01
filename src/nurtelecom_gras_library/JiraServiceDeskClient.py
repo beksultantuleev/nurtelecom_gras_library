@@ -575,16 +575,12 @@ class JiraClient:
 
 if __name__ == "__main__":
 
-    JIRA_TOKEN = 'JIRA_TOKEN'#os.environ.get('JIRA_TOKEN')
-    JIRA_username = 'JIRA_username'#os.environ.get('JIRA_username')
-    JIRA_password = 'JIRA_password'#os.environ.get('JIRA_password')
+    JIRA_TOKEN = 'JIRA_TOKEN'
+    JIRA_username = 'JIRA_username'
+    JIRA_password = 'JIRA_password'
     jira_client = JiraClient(
         base_url='https://xxx', token=JIRA_TOKEN)
-    # jira_client = JiraServiceDeskClient(
-    #     base_url='https://sd.o.kg', username='complaints_bot', password='complaints_bot')
-    # jira_client.check_portal_access()
-    # jira_client.get_request_types(service_desk_id=80)
-    # jira_client.get_request_fields(request_type_id=1054, service_desk_id=80)
+
 
     test_fields = {
         "summary": "🔧 Тестовая заявка из скрипта",
@@ -595,14 +591,9 @@ if __name__ == "__main__":
         )
     }
 
-    # jira_client.list_available_projects()
 
-
-    # issue_key = jira_client.create_request(
-    #     fields=test_fields, service_desk_id=80, request_type_id=1054)
-    # print(issue_key)
-    issue_key = 'NT-420316'
+    issue_key = 'xxx'
     attachment_id = jira_client.upload_attachment_to_issue(
-        service_desk_id=80, file_path='./bot_image/complaint_pic.jpg')
+        service_desk_id=80, file_path='pic.jpg')
     jira_client.attach_to_request(
         issue_key=issue_key, comment='test photo1', tmp_attachment_id=attachment_id)

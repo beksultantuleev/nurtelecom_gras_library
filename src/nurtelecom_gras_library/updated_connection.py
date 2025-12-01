@@ -31,5 +31,5 @@ def get_db_connection(user, database, all_cred_dict=None, geodata=False):
     )
 
 if __name__ == "__main__":
-    database_connection = get_db_connection('kpi', 'dwh_sd')
+    database_connection = get_db_connection('xx', 'xx')
     pass

@@ -446,6 +446,4 @@ def get_all_cred_dict(vault_url = pass_decoder(os.environ.get(f'VAULT_LINK_URL')
 
 
 if __name__ == "__main__":
-    # database_connection = get_db_connection('kpi', 'dwh_sd')
-    # print(database_connection.get_data('select 1 from dual'))
     pass
