@@ -310,13 +310,26 @@ def get_a_copy(path_to_original_file, end_path):
     except:
         print('failed')
 
-def send_email(send_to, send_from, subject, host, content=None, directory=None, file_to_attach=None, show_logs = False):
+def send_email(send_to, send_from, subject, host, content=None, directory=None, file_to_attach=None, cc_to=None, show_logs=False):
 
     # Create the message
     msg = EmailMessage()
     # f'Contents of directory {os.path.abspath(directory)}'
     msg['Subject'] = subject
-    msg['To'] = send_to
+
+    # --- HANDLE "TO" INPUT ---
+    # If it's a list or tuple, join it into a comma-separated string
+    if isinstance(send_to, (list, tuple)):
+        msg['To'] = ', '.join(send_to)
+    else:
+        msg['To'] = send_to
+    # --- HANDLE "CC" INPUT ---
+    if cc_to:
+        if isinstance(cc_to, (list, tuple)):
+            msg['Cc'] = ', '.join(cc_to)
+        else:
+            msg['Cc'] = cc_to 
+
     msg['From'] = send_from
     msg.preamble = 'You will not see this in a MIME-aware mail reader.\n'
     if content != None:
