@@ -1,16 +1,22 @@
-# import cx_Oracle
 import oracledb
 import pandas as pd
+import numpy as np
 import timeit
 from sqlalchemy.engine import create_engine
 from sqlalchemy import update, text
 from nurtelecom_gras_library.additional_functions import measure_time
 import csv
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class OracleDataRetriever():
-    oracledb.init_oracle_client()
+    # NOTE: Calling init_oracle_client forces "Thick Mode". 
+    # If you don't strictly need it, removing this line might save memory (Thin Mode).
+    try:
+        oracledb.init_oracle_client()
+    except Exception:
+        pass # Client might already be initialized or not found
 
     def __init__(self, user: str, password: str, host: str,
                  port: str = '1521', service_name: str = 'DWH') -> None:
@@ -23,6 +29,22 @@ class OracleDataRetriever():
         self.engine_url = f'oracle+oracledb://{self.user}:{self.password}@{self.dsn}'
         
         self.ENGINE_PATH_WIN_AUTH = f'oracle://{self.user}:{self.password}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={self.host})(PORT={self.port}))(CONNECT_DATA=(SERVICE_NAME={self.service_name})))'
+
+        # --- NEW: Initialize Connection Pool ---
+        # This fixes "AttributeError: ... has no attribute 'pool'"
+        try:
+            self.pool = oracledb.create_pool(
+                user=self.user,
+                password=self.password,
+                dsn=self.dsn,
+                min=4,      # Minimum connections to keep open
+                max=12,     # Max connections (allows for overhead)
+                increment=1
+            )
+            print("Oracle Connection Pool initialized.")
+        except oracledb.Error as e:
+            print(f"Warning: Failed to create connection pool. Parallel uploads will fail. Error: {e}")
+            self.pool = None
 
     def get_engine(self):
         """
@@ -229,6 +251,83 @@ class OracleDataRetriever():
             engine.dispose()
             if verbose:
                 print('Connection closed and engine disposed.')
+
+
+    # --- NEW: Improved Parallel Upload (Fixes DPI-1001 & AttributeError) ---
+    @measure_time
+    def upload_pandas_df_to_oracle_parallel(self, pandas_df: pd.DataFrame, table_name: str,
+                                            geometry_cols: list = [], srid: int = 4326, 
+                                            num_threads: int = 4, batch_size: int = 10000) -> None:
+        """
+        Parallel upload with internal batching to prevent 'DPI-1001: out of memory'.
+        """
+        if pandas_df.empty:
+            print("DataFrame is empty, skipping upload.")
+            return
+
+        if not self.pool:
+            print("Error: Connection pool is not initialized.")
+            return
+
+        # 1. Prepare Data & SQL
+        if geometry_cols:
+            pandas_df[geometry_cols] = pandas_df[geometry_cols].astype(str)
+
+        values_string_list = [
+            f"SDO_GEOMETRY(:{i}, {srid})" if col in geometry_cols else f":{i}"
+            for i, col in enumerate(pandas_df.columns, start=1)
+        ]
+        sql_text = f"INSERT INTO {table_name} VALUES ({', '.join(values_string_list)})"
+
+        # 2. Split DataFrame (The Fix)
+        
+        # New way (Safe): Split the range of row numbers, then slice the DF
+        print(f"Starting parallel upload. Threads: {num_threads}. Total Rows: {len(pandas_df)}")
+        split_indices = np.array_split(np.arange(len(pandas_df)), num_threads)
+        chunks = [pandas_df.iloc[indices] for indices in split_indices if len(indices) > 0]
+
+        # 3. Worker Function
+        def _worker_upload(chunk_df, chunk_id):
+            if chunk_df.empty:
+                return 0
+
+            # Convert to list of tuples
+            chunk_data = [tuple(row) for row in chunk_df.itertuples(index=False, name=None)]
+            total_inserted_for_thread = 0
+
+            try:
+                # Acquire from pool
+                with self.pool.acquire() as conn:
+                    with conn.cursor() as cursor:
+                        # Internal Loop: Send data in small batches (e.g., 5000) to avoid memory overflow
+                        for i in range(0, len(chunk_data), batch_size):
+                            current_batch = chunk_data[i : i + batch_size]
+                            cursor.executemany(sql_text, current_batch)
+                            total_inserted_for_thread += cursor.rowcount
+                    
+                    conn.commit()
+                    return total_inserted_for_thread
+
+            except oracledb.Error as e:
+                print(f"Thread {chunk_id} Error: {e}")
+                raise
+
+        # 4. Execute Threads
+        total_rows = 0
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            future_to_chunk = {
+                executor.submit(_worker_upload, chunk, i): i 
+                for i, chunk in enumerate(chunks)
+            }
+            
+            try:
+                for future in as_completed(future_to_chunk):
+                    total_rows += future.result()
+            except Exception as e:
+                print(f"Upload failed: {e}")
+                raise
+
+        print(f'Done. Total rows inserted into "{table_name}": {total_rows}')
 
     def upload_pandas_df_to_oracle(self, pandas_df: pd.DataFrame, table_name: str,
                                    geometry_cols: list = [], srid: int = 4326) -> None:

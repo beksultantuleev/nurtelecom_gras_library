@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nurtelecom_gras_library"
-version = "2.1.7"
+version = "2.2.0"
 description = "Official Nurtelecom DSML library"
 readme = "README.md"
 authors = [
@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 urls = { "Homepage" = "https://github.com/beksultantuleev/nurtelecom_gras_library.git" }
 dependencies = [

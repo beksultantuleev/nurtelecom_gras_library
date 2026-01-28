@@ -17,7 +17,7 @@ setup(
     keywords='NurTelecom',
     install_requires=[
         #   'scikit-learn',
-        'cx_Oracle',
+        # 'cx_Oracle',
         'pandas',
         'sqlalchemy',
         'openpyxl',
