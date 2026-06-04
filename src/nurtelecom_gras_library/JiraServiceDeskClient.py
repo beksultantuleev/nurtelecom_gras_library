@@ -3,6 +3,9 @@ import requests
 import os
 from requests.auth import HTTPBasicAuth
 import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
 
 class JiraClient:
     """
@@ -64,7 +67,7 @@ class JiraClient:
         try:
             meta = self._get_project_meta(project_key, issue_type_name)
         except ValueError as e:
-            print(f"❌ Error getting project metadata: {e}")
+            logger.error(f"❌ Error getting project metadata: {e}")
             return None
 
         payload = {
@@ -95,7 +98,7 @@ class JiraClient:
             # return resp.json()
             return resp.json()['key']
         else:
-            print(f"❌ Error creating project issue: {resp.status_code}, {resp.text}")
+            logger.error(f"❌ Error creating project issue: {resp.status_code}, {resp.text}")
             return None
 
     def update_project_issue_fields(self, issue_key: str, fields: dict) -> bool:
@@ -118,10 +121,10 @@ class JiraClient:
         resp = requests.put(url, json=payload, headers=self.headers, auth=self.auth)
         
         if resp.status_code == 204:
-            print(f"✅ Issue {issue_key} successfully updated.")
+            logger.info(f"✅ Issue {issue_key} successfully updated.")
             return True
         else:
-            print(f"❌ Failed to update issue {issue_key}: {resp.status_code}, {resp.text}")
+            logger.error(f"❌ Failed to update issue {issue_key}: {resp.status_code}, {resp.text}")
             return False
 
     def add_attachment_to_issue(self, issue_key: str, file_path: str) -> bool:
@@ -142,7 +145,7 @@ class JiraClient:
         headers["X-Atlassian-Token"] = "no-check"
 
         if not os.path.exists(file_path):
-            print(f"❌ File not found: {file_path}")
+            logger.error(f"❌ File not found: {file_path}")
             return False
 
         with open(file_path, "rb") as f:
@@ -150,10 +153,10 @@ class JiraClient:
             resp = requests.post(url, files=files, headers=headers, auth=self.auth)
 
         if resp.status_code == 200:
-            print(f"✅ Successfully attached {os.path.basename(file_path)} to {issue_key}")
+            logger.info(f"✅ Successfully attached {os.path.basename(file_path)} to {issue_key}")
             return True
         else:
-            print(f"❌ Error attaching file to {issue_key}: {resp.status_code}, {resp.text}")
+            logger.error(f"❌ Error attaching file to {issue_key}: {resp.status_code}, {resp.text}")
             return False
 
     def _get_project_meta(self, project_key: str, issue_type_name: str) -> dict:
@@ -195,7 +198,7 @@ class JiraClient:
                 }
             return fields_info
         except (ValueError, requests.HTTPError) as e:
-            print(f"❌ Could not get fields: {e}")
+            logger.error(f"❌ Could not get fields: {e}")
             return None
 
     # Add this method inside your JiraClient class
@@ -216,10 +219,10 @@ class JiraClient:
         resp = requests.post(url, json=payload, headers=self.headers, auth=self.auth)
         
         if resp.status_code == 201:
-            print(f"💬 Successfully added comment to {issue_key}")
+            logger.info(f"💬 Successfully added comment to {issue_key}")
             return True
         else:
-            print(f"❌ Error adding comment to {issue_key}: {resp.status_code}, {resp.text}")
+            logger.error(f"❌ Error adding comment to {issue_key}: {resp.status_code}, {resp.text}")
             return False
         
     # Inside your JiraClient class
@@ -248,7 +251,7 @@ class JiraClient:
         # Step 1: Upload all files as attachments
         for file_path in file_paths:
             if not self.add_attachment_to_issue(issue_key, file_path):
-                print(f"❌ Halting process because attachment failed for: {file_path}")
+                logger.error(f"❌ Halting process because attachment failed for: {file_path}")
                 return False # Stop if any attachment fails
             uploaded_filenames.append(os.path.basename(file_path))
 
@@ -280,7 +283,7 @@ class JiraClient:
         resp = requests.post(url, json=payload, headers=self.headers, auth=self.auth)
         if resp.status_code in (200, 201):
             return resp.json().get("issueKey")
-        print(f"❌ Ошибка создания заявки: {resp.status_code}, {resp.text}")
+        logger.error(f"❌ Ошибка создания заявки: {resp.status_code}, {resp.text}")
         return None
 
     def add_comment_to_request(self, issue_key: str, text: str, public: bool = True):
@@ -291,11 +294,16 @@ class JiraClient:
         payload = {"body": text, "public": public}
         resp = requests.post(url, json=payload, headers=self.headers, auth=self.auth)
         if resp.status_code != 201:
-            print(f"❌ Ошибка добавления комментария: {resp.status_code}, {resp.text}")
+            logger.error(f"❌ Ошибка добавления комментария: {resp.status_code}, {resp.text}")
 
 
     def attach_to_request(self, issue_key: str, tmp_attachment_id: str, comment: str):
+        """Attach a previously-uploaded temporary file to a Service Desk request.
 
+        :param issue_key: The request/issue key (e.g. "ITSD-123").
+        :param tmp_attachment_id: Temporary attachment id from a prior upload.
+        :param comment: Public comment posted alongside the attachment.
+        """
         url = f"{self.base_url}/rest/servicedeskapi/request/{issue_key}/attachment"
         headers = self.headers.copy()
         headers.update({
@@ -311,10 +319,18 @@ class JiraClient:
         resp = requests.post(
             url, json=payload, headers=headers, auth=self.auth)
         if resp.status_code not in (200, 201, 204):
-            print(
+            logger.error(
                 f"❌ Ошибка прикрепления файла: {resp.status_code}, {resp.text}")
     
     def get_request_details(self, issue_key: str) -> Optional[dict]:
+        """Fetch a condensed status summary for a Service Desk request.
+
+        Combines the Service Desk and core issue APIs into a single dict with
+        created date, current status, reporter, resolution date, and key.
+
+        :param issue_key: The request/issue key (e.g. "ITSD-123").
+        :return: A summary dict, or None if the request could not be fetched.
+        """
         url_main = f"{self.base_url}/rest/servicedeskapi/request/{issue_key}"
         url_issue = f"{self.base_url}/rest/api/2/issue/{issue_key}"
 
@@ -322,7 +338,7 @@ class JiraClient:
         r2 = requests.get(url_issue, headers=self.headers, auth=self.auth)
 
         if r1.status_code != 200:
-            print(
+            logger.error(
                 f"❌ Ошибка получения основной информации: {r1.status_code}, {r1.text}")
             return None
 
@@ -338,30 +354,38 @@ class JiraClient:
         }
 
     def check_portal_access(self):
+        """Print the Service Desk portals/projects accessible to the current user.
+
+        Useful for discovering service desk ids. Prints results; returns nothing.
+        """
         url = f"{self.base_url}/rest/servicedeskapi/servicedesk"
         try:
             response = requests.get(url, headers=self.headers, auth=self.auth)
             if response.status_code == 200:
-                print("✅ Доступные порталы и проекты:")
+                logger.info("✅ Доступные порталы и проекты:")
                 data = response.json()
                 for item in data.get("values", []):
-                    print(f"- ID: {item['id']} | Project Name: {item['projectName']}")
+                    logger.info(f"- ID: {item['id']} | Project Name: {item['projectName']}")
             else:
-                print(f"❌ Ошибка получения данных: {response.status_code}")
+                logger.error(f"❌ Ошибка получения данных: {response.status_code}")
         except requests.RequestException as e:
-            print(f"❌ Ошибка запроса: {e}")
+            logger.error(f"❌ Ошибка запроса: {e}")
 
     def get_request_types(self, service_desk_id: Union[str, int]):
+        """Print the available request types for a Service Desk portal.
+
+        :param service_desk_id: The service desk/portal id.
+        """
         url = f"{self.base_url}/rest/servicedeskapi/servicedesk/{service_desk_id}/requesttype"
 
         resp = requests.get(url, headers=self.headers, auth=self.auth)
 
         if resp.status_code == 200:
-            print(f"✅ Типы заявок для портала {service_desk_id}:")
+            logger.info(f"✅ Типы заявок для портала {service_desk_id}:")
             for item in resp.json().get("values", []):
-                print(f"- ID: {item['id']} | Name: {item['name']}")
+                logger.info(f"- ID: {item['id']} | Name: {item['name']}")
         else:
-            print(
+            logger.error(
                 f"❌ Ошибка при получении типов заявок: {resp.status_code} — {resp.text}")
 
     def get_request_fields(self, service_desk_id: Union[str, int], request_type_id: Union[str, int]):
@@ -372,13 +396,13 @@ class JiraClient:
 
         resp = requests.get(url, headers=self.headers, auth=self.auth)
         if resp.status_code == 200:
-            print(
+            logger.info(
                 f"✅ Поля формы для Request Type {request_type_id} (Portal {service_desk_id}):")
             for f in resp.json().get("requestTypeFields", []):
-                print(
+                logger.info(
                     f"- {f['fieldId']} | {f['name']} | required={f.get('required')}")
         else:
-            print(
+            logger.error(
                 f"❌ Ошибка при получении полей формы: {resp.status_code} — {resp.text}")
 
     def add_user_to_task(self, login: str, issue_key: str):
@@ -416,7 +440,12 @@ class JiraClient:
     # =================================================================
     
     def fetch_all_issues(self, jql: str, batch_size=50) -> List[dict]:
-        # This method is already using the core API, so it's perfect as-is.
+        """Fetch all issues matching a JQL query, paging through all results.
+
+        :param jql: The JQL query string (e.g. "project = OPTM AND status = Open").
+        :param batch_size: Number of issues to request per page.
+        :return: A list of raw issue dicts (combine with :meth:`get_issues_df`).
+        """
         all_issues = []
         start_at = 0
         while True:
@@ -425,15 +454,15 @@ class JiraClient:
                 f"{self.base_url}/rest/api/2/search", headers=self.headers, params=params, auth=self.auth
             )
             if response.status_code != 200:
-                print(f"❌ Failed to fetch issues at startAt={start_at}: {response.status_code}")
-                print(response.text)
+                logger.error(f"❌ Failed to fetch issues at startAt={start_at}: {response.status_code}")
+                logger.info(response.text)
                 break
             data = response.json()
             issues = data.get("issues", [])
             all_issues.extend(issues)
             if start_at + len(issues) >= data.get("total", 0):
                 break
-            print(f'retrieved {start_at + len(issues)} of {data.get("total", 0)}')
+            logger.info(f'retrieved {start_at + len(issues)} of {data.get("total", 0)}')
             start_at += batch_size
         return all_issues
 
@@ -508,20 +537,20 @@ class JiraClient:
             Optional[List[dict]]: A list of project dictionaries on success, None on failure.
         """
         url = f"{self.base_url}/rest/api/2/project"
-        print("🔎 Checking for available standard Jira projects...")
+        logger.info("🔎 Checking for available standard Jira projects...")
         try:
             response = requests.get(url, headers=self.headers, auth=self.auth)
             if response.status_code == 200:
                 projects = response.json()
-                print("✅ Available Projects:")
+                logger.info("✅ Available Projects:")
                 for project in projects:
-                    print(f"- Key: {project['key']} | Name: {project['name']} | ID: {project['id']}")
+                    logger.info(f"- Key: {project['key']} | Name: {project['name']} | ID: {project['id']}")
                 return projects
             else:
-                print(f"❌ Error getting project data: {response.status_code} - {response.text}")
+                logger.error(f"❌ Error getting project data: {response.status_code} - {response.text}")
                 return None
         except requests.RequestException as e:
-            print(f"❌ Request error: {e}")
+            logger.error(f"❌ Request error: {e}")
             return None
 
     def list_issue_types_for_project(self, project_key: str) -> Optional[List[dict]]:
@@ -537,7 +566,7 @@ class JiraClient:
         """
         url = f"{self.base_url}/rest/api/2/issue/createmeta"
         params = {"projectKeys": project_key, "expand": "projects.issuetypes"}
-        print(f"🔎 Fetching issue types for project '{project_key}'...")
+        logger.info(f"🔎 Fetching issue types for project '{project_key}'...")
         
         try:
             resp = requests.get(url, auth=self.auth, params=params, headers=self.headers)
@@ -546,18 +575,18 @@ class JiraClient:
 
             project = next((p for p in data.get("projects", []) if p["key"] == project_key), None)
             if not project:
-                print(f"❌ Project '{project_key}' not found or you don't have permission.")
+                logger.error(f"❌ Project '{project_key}' not found or you don't have permission.")
                 return None
 
             issue_types = project.get("issuetypes", [])
             if not issue_types:
-                print(f"🤷 No issue types found for project '{project_key}'.")
+                logger.info(f"🤷 No issue types found for project '{project_key}'.")
                 return []
 
-            print(f"✅ Available Issue Types for '{project_key}':")
+            logger.info(f"✅ Available Issue Types for '{project_key}':")
             result = []
             for itype in issue_types:
-                print(f"- Name: \"{itype['name']}\" (ID: {itype['id']})")
+                logger.info(f"- Name: \"{itype['name']}\" (ID: {itype['id']})")
                 result.append({
                     "id": itype.get('id'),
                     "name": itype.get('name'),
@@ -566,10 +595,10 @@ class JiraClient:
             return result
 
         except requests.HTTPError:
-            print(f"❌ Error fetching data: {resp.status_code} - {resp.text}")
+            logger.error(f"❌ Error fetching data: {resp.status_code} - {resp.text}")
             return None
         except requests.RequestException as e:
-            print(f"❌ Request error: {e}")
+            logger.error(f"❌ Request error: {e}")
             return None
 
 

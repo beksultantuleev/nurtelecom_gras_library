@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nurtelecom_gras_library"
-version = "2.2.0"
+version = "2.2.1"
 description = "Official Nurtelecom DSML library"
 readme = "README.md"
 authors = [
@@ -28,16 +28,33 @@ urls = { "Homepage" = "https://github.com/beksultantuleev/nurtelecom_gras_librar
 dependencies = [
     "oracledb",
     "pandas",
+    "numpy",
     "python-dotenv",
-    "geopandas",
     "sqlalchemy",
     "openpyxl",
     "requests",
-    "transliterate",
-    "hvac",
-    "tableauserverclient"
-
+    "hvac"
 ]
+
+[project.optional-dependencies]
+# Spatial features: OracleGeoDataImporter and voronoi_split.
+# Install with: pip install nurtelecom_gras_library[geo]
+geo = ["geopandas", "shapely", "scipy"]
+# SMB network-share support for register_smb_session.
+# Install with: pip install nurtelecom_gras_library[smb]
+smb = ["smbprotocol"]
+# Tableau export support for TableauServerManager.
+# Install with: pip install nurtelecom_gras_library[tableau]
+tableau = ["tableauserverclient"]
+# Development / test tooling: pip install nurtelecom_gras_library[dev]
+dev = ["pytest", "geopandas", "shapely", "scipy", "tableauserverclient"]
 
 [tool.setuptools]
 packages = { find = { where = ["src"] } }
+
+[tool.setuptools.package-data]
+nurtelecom_gras_library = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

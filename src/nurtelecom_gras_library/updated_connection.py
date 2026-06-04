@@ -1,6 +1,6 @@
 from nurtelecom_gras_library.OracleDataRetriever import OracleDataRetriever
 from nurtelecom_gras_library.OracleGeoDataImporter import OracleGeoDataImporter
-from nurtelecom_gras_library.additional_functions import *
+from nurtelecom_gras_library.additional_functions import get_all_cred_dict
 
 
 def get_db_connection(user, database, all_cred_dict=None, geodata=False):
