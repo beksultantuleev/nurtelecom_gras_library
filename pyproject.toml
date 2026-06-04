@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nurtelecom_gras_library"
-version = "2.3.0"
+version = "2.3.1"
 description = "Official Nurtelecom DSML library"
 readme = "README.md"
 authors = [

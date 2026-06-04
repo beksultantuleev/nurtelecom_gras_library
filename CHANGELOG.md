@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. This project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [2.3.1]
+
+### Changed
+- Restored automatic Thick-mode initialization on import (with a silent
+  Thin-mode fallback), so accounts using older password verifiers connect
+  without an explicit call — matching pre-2.3.0 behavior. Now configurable via
+  the `ORACLE_CLIENT_LIB_DIR` env var, `enable_thick_mode(lib_dir=...)`, and
+  `NURTELECOM_THICK_MODE=0` to opt out.
+
+### Added
+- README troubleshooting note for Thick mode / `DPY-3015` / `DPI-1047`.
+
 ## [2.3.0]
 
 ### Fixed
@@ -34,10 +46,9 @@ to [Semantic Versioning](https://semver.org/).
 - Replaced `print()` calls with the standard `logging` module across the library.
 - `OracleGeoDataImporter` reads CLOB/BLOB geometries correctly and tolerates NULL
   geometries; the first listed geometry column is set as the active geometry.
-- The Oracle connection pool is now created lazily (only when needed). Thick
-  mode is still auto-initialized on import (with a silent Thin-mode fallback),
-  but is now configurable: `enable_thick_mode(lib_dir=...)`, the
-  `ORACLE_CLIENT_LIB_DIR` env var, and `NURTELECOM_THICK_MODE=0` to disable.
+- The Oracle connection pool is now created lazily (only when needed), and Thick
+  mode was made opt-in via `enable_thick_mode()` instead of running on import.
+  (Reverted in 2.3.1 — see above.)
 - SQL statements that took user input (`send_sms`, `send_telegram_msg`) now use
   bind parameters; `truncate_table` validates the table identifier.
 - `get_all_cred_dict` now uses raw credential values (no base64 decoding); its
