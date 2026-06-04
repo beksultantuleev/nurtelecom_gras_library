@@ -5,6 +5,8 @@ raw_data/
 mac_virt_env/
 dist/
 build/
+virt_env/
+
 
 
 

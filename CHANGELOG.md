@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. This project adheres
 to [Semantic Versioning](https://semver.org/).
 
-## [2.2.1]
+## [2.3.0]
 
 ### Fixed
 - **Import-breaking bugs.** Removed an import-time call to `register_smb_session()`
@@ -21,6 +21,8 @@ to [Semantic Versioning](https://semver.org/).
   extra provides the test toolchain.
 - `OracleGeoDataImporter.get_data` gained a `geom_format` parameter
   (`"auto"` | `"wkb"` | `"wkt"`); **WKB** is now the preferred, lossless path.
+- `get_all_cred_dict` supports Vault **AppRole** auth (`role_id` + `secret_id`,
+  or an `approle={role_id: secret_id}` dict) alongside token auth.
 - Connection objects are now context managers (`with get_db_connection(...) as db:`)
   and expose `close()`.
 - `send_email` gained an optional `html` body plus `port`/`use_tls`/auth options
@@ -36,6 +38,10 @@ to [Semantic Versioning](https://semver.org/).
   mode is opt-in via `enable_thick_mode()` instead of running on import.
 - SQL statements that took user input (`send_sms`, `send_telegram_msg`) now use
   bind parameters; `truncate_table` validates the table identifier.
+- `get_all_cred_dict` now uses raw credential values (no base64 decoding); its
+  environment variables (`VAULT_LINK_URL`, `VAULT_TKN`, `VAULT_ROLE_ID`,
+  `VAULT_SECRET_ID`, `PATH_TO_SECRET_VLT`, `MOUNT_POINT_VLT`) are read verbatim,
+  and it raises on missing creds / failed auth instead of returning `None`.
 
 ### Removed
 - Obsolete `setup.py`, `setup.cfg`, and `test_toml.py`.

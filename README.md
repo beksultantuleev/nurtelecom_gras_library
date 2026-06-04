@@ -34,30 +34,39 @@ that needs one.
 
 ## Quick start
 
+A complete, runnable version of the flow below lives in
+[`example.py`](example.py) — copy it and fill in your details.
+
 ```python
+import logging
 from nurtelecom_gras_library import (
     get_db_connection,
     get_all_cred_dict,
     make_table_query_from_pandas,
 )
 
-# 1. Pull credentials from Vault (or pass a dict yourself)
+# Optional: the library logs (doesn't print) — show INFO to see progress.
+logging.basicConfig(level=logging.INFO)
+
+# 1. Pull credentials from Vault. AppRole (role_id + secret_id) is recommended;
+#    any argument left out is read from the matching env var (see Credentials).
 all_cred_dict = get_all_cred_dict(
-    vault_url=url,
-    vault_token=token,
+    vault_url="https://vault.example.com",
+    role_id="your-approle-role-id",
+    secret_id="your-approle-secret-id",
     path_to_secret="path/to/secret",
-    mount_point="mount_point",
+    mount_point="your_kv_mount",
 )
 
-# 2. Open a connection for a given user + database
-db = get_db_connection("my_login", "DWH", all_cred_dict)
+# 2. Open a connection for a given user + database (context manager closes it).
+with get_db_connection("my_login", "DWH", all_cred_dict) as db:
+    # 3. Query into a pandas DataFrame.
+    df = db.get_data("SELECT 1 AS one FROM dual")
 
-# 3. Query into a pandas DataFrame
-df = db.get_data("SELECT 1 AS one FROM dual")
-
-# 4. Generate and run a CREATE TABLE from the DataFrame
-ddl = make_table_query_from_pandas(df=df, table_name="my_new_table")
-db.execute(ddl)
+    # 4. Generate and run a CREATE TABLE from the DataFrame, then load it.
+    ddl = make_table_query_from_pandas(df=df, table_name="my_new_table")
+    db.execute(ddl)
+    db.upload_pandas_df_to_oracle(df, "my_new_table")
 ```
 
 ---
@@ -184,8 +193,8 @@ from nurtelecom_gras_library import get_all_cred_dict
 
 # AppRole auth (recommended): role_id + secret_id
 creds = get_all_cred_dict(
-    vault_url=url, role_id="d2100dc3-...", secret_id="59cf260c-...",
-    path_to_secret="path/to/secret", mount_point="mount_point",
+    vault_url=url, role_id="your-approle-role-id", secret_id="your-approle-secret-id",
+    path_to_secret="path/to/secret", mount_point="your_kv_mount",
 )
 
 # Token auth
@@ -193,12 +202,13 @@ creds = get_all_cred_dict(vault_url=url, vault_token=token, path_to_secret=..., 
 ```
 
 AppRole takes precedence when both `role_id` and `secret_id` are supplied.
-If any argument is omitted, it is read (base64-decoded) from the corresponding
-environment variable: `VAULT_LINK_URL`, `VAULT_TKN`, `VAULT_ROLE_ID`,
-`VAULT_SECRET_ID`, `PATH_TO_SECRET_VLT`, `MOUNT_POINT_VLT`. The function raises
-`ValueError` if no credentials are given and `RuntimeError` if Vault auth fails.
-Helpers `pass_encoder` / `pass_decoder` provide base64 encode/decode (note:
-base64 is encoding, **not** encryption).
+Values are used **as-is (raw)** — `vault_url` must include the scheme
+(`https://…`). If any argument is omitted, it is read verbatim from the
+corresponding environment variable: `VAULT_LINK_URL`, `VAULT_TKN`,
+`VAULT_ROLE_ID`, `VAULT_SECRET_ID`, `PATH_TO_SECRET_VLT`, `MOUNT_POINT_VLT`. The
+function raises `ValueError` if no credentials are given and `RuntimeError` if
+Vault auth fails. Helpers `pass_encoder` / `pass_decoder` still provide base64
+encode/decode if you want them (note: base64 is encoding, **not** encryption).
 
 ---
 

@@ -584,14 +584,6 @@ def voronoi_split(poly_figure, coords_list, buffer_value=2000, boundary_value=10
 
     return result
 
-def _resolve_from_env(value, env_var):
-    """Return ``value`` if set, else the base64-decoded env var (or None)."""
-    if value is not None:
-        return value
-    raw = os.environ.get(env_var)
-    return pass_decoder(raw) if raw is not None else None
-
-
 def _unpack_approle(approle):
     """Extract ``(role_id, secret_id)`` from a dict or pair, else ``(None, None)``."""
     if not approle:
@@ -620,23 +612,26 @@ def get_all_cred_dict(vault_url=None, vault_token=None, path_to_secret=None,
       separate arguments or as a single ``{role_id: secret_id}`` dict::
 
           creds = get_all_cred_dict(
-              vault_url=url, role_id='d2100dc3-...', secret_id='59cf260c-...',
+              vault_url=url, role_id='<role-id>', secret_id='<secret-id>',
               path_to_secret='xxx', mount_point='xxx')
 
           # equivalent dict form:
           creds = get_all_cred_dict(
-              vault_url=url, approle={'d2100dc3-...': '59cf260c-...'},
+              vault_url=url, approle={'<role-id>': '<secret-id>'},
               path_to_secret='xxx', mount_point='xxx')
 
     * **Token** — pass ``vault_token``.
 
     AppRole takes precedence when both a role id and secret id are available.
 
-    Any argument left as ``None`` is read (base64-decoded) from the matching
-    environment variable: ``VAULT_LINK_URL``, ``VAULT_TKN``, ``VAULT_ROLE_ID``,
-    ``VAULT_SECRET_ID``, ``PATH_TO_SECRET_VLT``, ``MOUNT_POINT_VLT``.
+    Values are used **as-is (raw)** — no encoding/decoding. Any argument left as
+    ``None`` falls back to the matching environment variable (also raw):
+    ``VAULT_LINK_URL``, ``VAULT_TKN``, ``VAULT_ROLE_ID``, ``VAULT_SECRET_ID``,
+    ``PATH_TO_SECRET_VLT``, ``MOUNT_POINT_VLT``.
 
-    :param vault_url: Vault server URL.
+    Note: ``vault_url`` must include the scheme (e.g. ``https://host``).
+
+    :param vault_url: Vault server URL (with scheme).
     :param vault_token: Static Vault token (token auth).
     :param path_to_secret: Path of the KV v2 secret to read.
     :param mount_point: KV v2 secrets-engine mount point.
@@ -651,12 +646,13 @@ def get_all_cred_dict(vault_url=None, vault_token=None, path_to_secret=None,
     :raises ValueError: If no usable credentials are provided.
     :raises RuntimeError: If authentication with Vault fails.
     '''
-    vault_url = _resolve_from_env(vault_url, 'VAULT_LINK_URL')
-    vault_token = _resolve_from_env(vault_token, 'VAULT_TKN')
-    role_id = _resolve_from_env(role_id, 'VAULT_ROLE_ID')
-    secret_id = _resolve_from_env(secret_id, 'VAULT_SECRET_ID')
-    path_to_secret = _resolve_from_env(path_to_secret, 'PATH_TO_SECRET_VLT')
-    mount_point = _resolve_from_env(mount_point, 'MOUNT_POINT_VLT')
+    # Raw values: argument first, else the environment variable verbatim.
+    vault_url = vault_url or os.getenv('VAULT_LINK_URL')
+    vault_token = vault_token or os.getenv('VAULT_TKN')
+    role_id = role_id or os.getenv('VAULT_ROLE_ID')
+    secret_id = secret_id or os.getenv('VAULT_SECRET_ID')
+    path_to_secret = path_to_secret or os.getenv('PATH_TO_SECRET_VLT')
+    mount_point = mount_point or os.getenv('MOUNT_POINT_VLT')
 
     # Fill any missing AppRole creds from the convenience `approle` argument.
     approle_rid, approle_sid = _unpack_approle(approle)
@@ -679,9 +675,9 @@ def get_all_cred_dict(vault_url=None, vault_token=None, path_to_secret=None,
     if not client.is_authenticated():
         raise RuntimeError("Vault authentication failed.")
 
-    raw_response = client.secrets.kv.read_secret_version(
+    read_response = client.secrets.kv.v2.read_secret_version(
         path=path_to_secret, mount_point=mount_point, raise_on_deleted_version=True)
-    return raw_response['data']['data']
+    return read_response['data']['data']
 
 
 if __name__ == "__main__":
