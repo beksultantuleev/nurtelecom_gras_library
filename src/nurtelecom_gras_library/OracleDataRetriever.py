@@ -1,3 +1,4 @@
+import os
 import oracledb
 import pandas as pd
 import numpy as np
@@ -21,13 +22,39 @@ _IDENTIFIER_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_$#]*(\.[A-Za-z][A-Za-z0-9_$#]*
 def enable_thick_mode(lib_dir=None):
     """Enable python-oracledb Thick mode (loads the Oracle Client libraries).
 
-    Thin mode (the default) is sufficient for everything this library does,
-    including spatial reads. Call this only if you specifically need Thick-mode
-    features. Safe to call once at application startup.
+    Thick mode is required to connect to accounts that use older password
+    verifiers (otherwise Thin mode raises ``DPY-3015``). Safe to call once at
+    application startup; raises ``DatabaseError`` (``DPI-1047``) if the Oracle
+    Client libraries cannot be located.
 
-    :param lib_dir: Optional path to the Oracle Client library directory.
+    :param lib_dir: Path to the Oracle Client library directory. If ``None``,
+        the loader's default search path (``LD_LIBRARY_PATH`` / ``ldconfig`` on
+        Linux, ``PATH`` on Windows) is used.
     """
     oracledb.init_oracle_client(lib_dir=lib_dir)
+
+
+def _auto_init_thick_mode():
+    """Best-effort Thick-mode initialization at import (pre-2.3.0 behavior).
+
+    Many GRAS accounts use older password verifiers that only work in Thick
+    mode, so this attempts to load the Oracle Client automatically. It uses the
+    ``ORACLE_CLIENT_LIB_DIR`` environment variable as the client directory when
+    set. Any failure (e.g. client not installed) falls back silently to Thin
+    mode. Set ``NURTELECOM_THICK_MODE=0`` to skip this, or call
+    :func:`enable_thick_mode` explicitly with a ``lib_dir``.
+    """
+    if os.getenv("NURTELECOM_THICK_MODE", "1") == "0":
+        return
+    try:
+        enable_thick_mode(lib_dir=os.getenv("ORACLE_CLIENT_LIB_DIR") or None)
+        logger.debug("Oracle Client initialized (Thick mode).")
+    except Exception as e:
+        logger.debug("Thick mode unavailable (%s); using Thin mode.", e)
+
+
+# Mirror the pre-2.3.0 behavior: try Thick mode on import, fall back to Thin.
+_auto_init_thick_mode()
 
 
 def _validate_identifier(name):

@@ -34,8 +34,10 @@ to [Semantic Versioning](https://semver.org/).
 - Replaced `print()` calls with the standard `logging` module across the library.
 - `OracleGeoDataImporter` reads CLOB/BLOB geometries correctly and tolerates NULL
   geometries; the first listed geometry column is set as the active geometry.
-- The Oracle connection pool is now created lazily (only when needed), and Thick
-  mode is opt-in via `enable_thick_mode()` instead of running on import.
+- The Oracle connection pool is now created lazily (only when needed). Thick
+  mode is still auto-initialized on import (with a silent Thin-mode fallback),
+  but is now configurable: `enable_thick_mode(lib_dir=...)`, the
+  `ORACLE_CLIENT_LIB_DIR` env var, and `NURTELECOM_THICK_MODE=0` to disable.
 - SQL statements that took user input (`send_sms`, `send_telegram_msg`) now use
   bind parameters; `truncate_table` validates the table identifier.
 - `get_all_cred_dict` now uses raw credential values (no base64 decoding); its

@@ -96,6 +96,29 @@ with get_db_connection("my_login", "DWH", all_cred_dict) as db:
     df = db.get_data("SELECT 1 FROM dual")
 ```
 
+#### Oracle Client / Thick mode
+
+On import the library tries to initialize **Thick mode** (it loads the Oracle
+Client libraries), falling back silently to **Thin mode** if the client isn't
+found. Thick mode is required for accounts using older password verifiers —
+otherwise you'll see `DPY-3015: password verifier type ... not supported ... in
+thin mode`.
+
+If the client isn't on the default loader path you'll get
+`DPI-1047: Cannot locate ... Oracle Client library`. Point the library at it via
+either:
+
+```bash
+export ORACLE_CLIENT_LIB_DIR=/opt/oracle/instantclient_21_13   # used on import
+# or set LD_LIBRARY_PATH before launching Python
+```
+```python
+from nurtelecom_gras_library import enable_thick_mode
+enable_thick_mode(lib_dir="/opt/oracle/instantclient_21_13")    # explicit
+```
+
+Set `NURTELECOM_THICK_MODE=0` to skip the auto-init and stay in Thin mode.
+
 ### Reading
 
 ```python
