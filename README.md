@@ -64,11 +64,13 @@ db.execute(ddl)
 
 ## Database access (Oracle)
 
-`get_db_connection(user, database, all_cred_dict=None, geodata=False)` returns an
+`get_db_connection(user, database, all_cred_dict=None, geodata=False, vso_paths=None)` returns an
 `OracleDataRetriever` (or an `OracleGeoDataImporter` when `geodata=True`). It looks
 up `{USER}_{DATABASE}`, `{DATABASE}_IP`, `{DATABASE}_SERVICE_NAME`, and
-`{DATABASE}_PORT` from the credentials dict. You can also instantiate the class
-directly:
+`{DATABASE}_PORT` from the credentials dict. If the dict contains
+`{DATABASE}_DSN` (an Easy Connect string `<IP>:<PORT>/<SERVICE_NAME>`, e.g.
+`10.0.0.1:1521/DWH`), it is used instead of the separate IP/PORT/SERVICE_NAME
+keys. You can also instantiate the class directly:
 
 ```python
 from nurtelecom_gras_library import OracleDataRetriever
@@ -77,6 +79,10 @@ db = OracleDataRetriever(
     user="user", password="pass",
     host="192.168.1.1", port="1521", service_name="DWH",
 )
+
+# or from a DSN (all methods work the same)
+db = OracleDataRetriever(user="user", password="pass", dsn="192.168.1.1:1521/DWH")
+db = OracleDataRetriever.from_dsn("user", "pass", "192.168.1.1:1521/DWH")
 ```
 
 Connections are context managers — use `with` to release the engine/pool
@@ -199,6 +205,33 @@ environment variable: `VAULT_LINK_URL`, `VAULT_TKN`, `VAULT_ROLE_ID`,
 `ValueError` if no credentials are given and `RuntimeError` if Vault auth fails.
 Helpers `pass_encoder` / `pass_decoder` provide base64 encode/decode (note:
 base64 is encoding, **not** encryption).
+
+### Vault Secrets Operator (Kubernetes)
+
+When VSO syncs Vault secrets into Kubernetes Secrets mounted as volumes (one
+file per key), read them with `get_all_cred_dict_vso`. Several secrets mounted
+at different paths are merged into one dict:
+
+```yaml
+volumeMounts:
+  - { name: main, mountPath: /etc/secrets/main, readOnly: true }
+  - { name: db,   mountPath: /etc/secrets/db,   readOnly: true }
+```
+
+```python
+from nurtelecom_gras_library import get_all_cred_dict_vso, get_db_connection
+
+creds = get_all_cred_dict_vso(["/etc/secrets/main", "/etc/secrets/db"])
+db = get_db_connection("my_login", "DWH", creds)
+
+# or in one step
+db = get_db_connection("my_login", "DWH", vso_paths=["/etc/secrets/main", "/etc/secrets/db"])
+```
+
+If `secret_paths` is omitted, paths are read from the `VSO_SECRET_PATHS`
+environment variable (plain text, comma-separated). Kubernetes bookkeeping
+entries (`..data` etc.) and VSO's `_raw` key are skipped; trailing newlines are
+stripped. A key present in more than one directory raises `ValueError`.
 
 ---
 
