@@ -680,5 +680,70 @@ def get_all_cred_dict(vault_url=None, vault_token=None, path_to_secret=None,
     return read_response['data']['data']
 
 
+def _split_vso_paths(secret_paths):
+    """Normalize ``secret_paths`` (str, list/tuple, or None -> env) to a list."""
+    if secret_paths is None:
+        raw = os.environ.get('VSO_SECRET_PATHS', '')
+        secret_paths = raw.replace(os.pathsep, ',').split(',')
+    elif isinstance(secret_paths, (str, os.PathLike)):
+        secret_paths = [secret_paths]
+    return [os.fspath(p).strip() for p in secret_paths if p and os.fspath(p).strip()]
+
+
+def get_all_cred_dict_vso(secret_paths=None, skip_keys=('_raw',)):
+    '''
+    Read credentials synced by the Vault Secrets Operator (VSO) and mounted
+    into the pod as Kubernetes Secret volumes; return them as one dict.
+
+    Each mounted directory holds one file per key (file name = key, file
+    content = value). Several secrets can be mounted at different paths::
+
+        volumeMounts:
+          - { name: main, mountPath: /etc/secrets/main, readOnly: true }
+          - { name: db,   mountPath: /etc/secrets/db,   readOnly: true }
+
+        creds = get_all_cred_dict_vso(['/etc/secrets/main', '/etc/secrets/db'])
+        db = get_db_connection('my_login', 'DWH', creds)
+
+    Kubernetes bookkeeping entries (names starting with ``.``, e.g. ``..data``)
+    and the keys in ``skip_keys`` (VSO's ``_raw`` JSON dump by default) are
+    ignored. Trailing newlines are stripped from values.
+
+    :param secret_paths: A directory path or a list of them. If ``None``, read
+        from the ``VSO_SECRET_PATHS`` environment variable (plain text, paths
+        separated by ``,`` or ``os.pathsep``).
+    :param skip_keys: Key names to ignore (default ``('_raw',)``).
+    :return: Dict of all keys from all directories.
+    :raises ValueError: If no paths are given, or the same key appears in
+        more than one directory.
+    :raises FileNotFoundError: If a path is not an existing directory.
+    '''
+    paths = _split_vso_paths(secret_paths)
+    if not paths:
+        raise ValueError(
+            "No VSO secret paths provided: pass 'secret_paths' or set the "
+            "VSO_SECRET_PATHS environment variable.")
+
+    creds = {}
+    key_sources = {}
+    for path in paths:
+        if not os.path.isdir(path):
+            raise FileNotFoundError(f"VSO secret directory not found: {path}")
+        for name in sorted(os.listdir(path)):
+            if name.startswith('.') or name in skip_keys:
+                continue
+            file_path = os.path.join(path, name)
+            if not os.path.isfile(file_path):
+                continue
+            if name in creds:
+                raise ValueError(
+                    f"Duplicate VSO secret key {name!r} found in "
+                    f"{key_sources[name]!r} and {path!r}.")
+            with open(file_path, encoding='utf-8') as f:
+                creds[name] = f.read().rstrip('\r\n')
+            key_sources[name] = path
+    return creds
+
+
 if __name__ == "__main__":
     pass

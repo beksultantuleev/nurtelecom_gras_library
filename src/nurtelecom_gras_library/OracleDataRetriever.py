@@ -34,27 +34,25 @@ def enable_thick_mode(lib_dir=None):
     oracledb.init_oracle_client(lib_dir=lib_dir)
 
 
-def _auto_init_thick_mode():
-    """Best-effort Thick-mode initialization at import (pre-2.3.0 behavior).
+# Easy Connect DSN: [//]<host>[:<port>]/<service_name>
+_EASY_CONNECT_RE = re.compile(r'^\s*(?://)?([^:/\s]+)(?::(\d+))?/([^\s/:?]+)\s*$')
 
-    Many GRAS accounts use older password verifiers that only work in Thick
-    mode, so this attempts to load the Oracle Client automatically. It uses the
-    ``ORACLE_CLIENT_LIB_DIR`` environment variable as the client directory when
-    set. Any failure (e.g. client not installed) falls back silently to Thin
-    mode. Set ``NURTELECOM_THICK_MODE=0`` to skip this, or call
-    :func:`enable_thick_mode` explicitly with a ``lib_dir``.
+
+def parse_easy_connect_dsn(dsn):
+    """Split an Easy Connect DSN ``<host>:<port>/<service_name>`` into parts.
+
+    The port is optional and defaults to ``'1521'``.
+
+    :param dsn: DSN string, e.g. ``'10.0.0.1:1521/DWH'``.
+    :return: Tuple ``(host, port, service_name)``.
+    :raises ValueError: If ``dsn`` is not in the expected format.
     """
-    if os.getenv("NURTELECOM_THICK_MODE", "1") == "0":
-        return
-    try:
-        enable_thick_mode(lib_dir=os.getenv("ORACLE_CLIENT_LIB_DIR") or None)
-        logger.debug("Oracle Client initialized (Thick mode).")
-    except Exception as e:
-        logger.debug("Thick mode unavailable (%s); using Thin mode.", e)
-
-
-# Mirror the pre-2.3.0 behavior: try Thick mode on import, fall back to Thin.
-_auto_init_thick_mode()
+    match = _EASY_CONNECT_RE.match(dsn) if isinstance(dsn, str) else None
+    if not match:
+        raise ValueError(
+            f"Invalid DSN {dsn!r}: expected '<host>:<port>/<service_name>'.")
+    host, port, service_name = match.groups()
+    return host, port or '1521', service_name
 
 
 def _validate_identifier(name):
@@ -66,8 +64,9 @@ def _validate_identifier(name):
 
 class OracleDataRetriever():
 
-    def __init__(self, user: str, password: str, host: str,
-                 port: str = '1521', service_name: str = 'DWH') -> None:
+    def __init__(self, user: str, password: str, host: str = None,
+                 port: str = '1521', service_name: str = 'DWH',
+                 dsn: str = None) -> None:
         """Create an Oracle connector.
 
         Builds the SQLAlchemy engine URL and DSN. The SQLAlchemy engine and the
@@ -83,7 +82,15 @@ class OracleDataRetriever():
         :param host: Database host/IP.
         :param port: Listener port (default '1521').
         :param service_name: Oracle service name (default 'DWH').
+        :param dsn: Optional Easy Connect DSN ``'<host>:<port>/<service_name>'``
+            (e.g. ``'10.0.0.1:1521/DWH'``). When given, it replaces
+            ``host``/``port``/``service_name``.
         """
+        self.easy_connect_dsn = dsn
+        if dsn is not None:
+            host, port, service_name = parse_easy_connect_dsn(dsn)
+        elif not host:
+            raise ValueError("Either 'host' or 'dsn' must be provided.")
         self.host = host
         self.port = port
         self.service_name = service_name
@@ -97,6 +104,11 @@ class OracleDataRetriever():
         )
         self._engine = None
         self._pool = None
+
+    @classmethod
+    def from_dsn(cls, user: str, password: str, dsn: str):
+        """Create a connector from an Easy Connect DSN ``'<host>:<port>/<service_name>'``."""
+        return cls(user=user, password=password, dsn=dsn)
 
     def get_pool(self):
         """Return the oracledb connection pool, creating it on first use.

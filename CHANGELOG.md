@@ -3,19 +3,7 @@
 All notable changes to this project are documented here. This project adheres
 to [Semantic Versioning](https://semver.org/).
 
-## [2.3.1]
-
-### Changed
-- Restored automatic Thick-mode initialization on import (with a silent
-  Thin-mode fallback), so accounts using older password verifiers connect
-  without an explicit call — matching pre-2.3.0 behavior. Now configurable via
-  the `ORACLE_CLIENT_LIB_DIR` env var, `enable_thick_mode(lib_dir=...)`, and
-  `NURTELECOM_THICK_MODE=0` to opt out.
-
-### Added
-- README troubleshooting note for Thick mode / `DPY-3015` / `DPI-1047`.
-
-## [2.3.0]
+## [2.2.1]
 
 ### Fixed
 - **Import-breaking bugs.** Removed an import-time call to `register_smb_session()`
