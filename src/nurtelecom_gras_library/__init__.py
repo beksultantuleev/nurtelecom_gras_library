@@ -8,6 +8,7 @@ except PackageNotFoundError:  # running from a source tree that isn't installed
 from nurtelecom_gras_library.OracleDataRetriever import (
     OracleDataRetriever,
     enable_thick_mode,
+    parse_easy_connect_dsn,
 )
 from nurtelecom_gras_library.OracleGeoDataImporter import OracleGeoDataImporter
 from nurtelecom_gras_library.updated_connection import get_db_connection
@@ -15,6 +16,7 @@ from nurtelecom_gras_library.JiraServiceDeskClient import JiraClient
 from nurtelecom_gras_library.TableauServerManager import TableauServerManager
 from nurtelecom_gras_library.additional_functions import (
     get_all_cred_dict,
+    get_all_cred_dict_vso,
     make_table_query_from_pandas,
     merge_clob_maker,
     get_list_of_objects,
@@ -42,11 +44,13 @@ __all__ = [
     "OracleDataRetriever",
     "OracleGeoDataImporter",
     "enable_thick_mode",
+    "parse_easy_connect_dsn",
     # Integrations
     "JiraClient",
     "TableauServerManager",
     # Credentials / SQL helpers
     "get_all_cred_dict",
+    "get_all_cred_dict_vso",
     "make_table_query_from_pandas",
     "merge_clob_maker",
     # Notifications

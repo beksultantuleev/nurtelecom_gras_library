@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. This project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] 
+
+### Added
+- `get_all_cred_dict_vso(secret_paths=None)` reads credentials synced by the
+  Vault Secrets Operator from one or more Kubernetes Secret volume mounts
+  (or from paths in `VSO_SECRET_PATHS`) and merges them into one dict.
+- Easy Connect DSN support: `OracleDataRetriever` / `OracleGeoDataImporter`
+  accept `dsn="<IP>:<PORT>/<SERVICE_NAME>"` and a `from_dsn()` classmethod;
+  helper `parse_easy_connect_dsn`.
+- `get_db_connection` uses the `{DATABASE}_DSN` key when present and accepts
+  `vso_paths=` to load credentials via VSO. Existing behaviour is unchanged.
+
 ## [2.2.1]
 
 ### Fixed

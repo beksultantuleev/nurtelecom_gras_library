@@ -30,6 +30,27 @@ def enable_thick_mode(lib_dir=None):
     oracledb.init_oracle_client(lib_dir=lib_dir)
 
 
+# Easy Connect DSN: [//]<host>[:<port>]/<service_name>
+_EASY_CONNECT_RE = re.compile(r'^\s*(?://)?([^:/\s]+)(?::(\d+))?/([^\s/:?]+)\s*$')
+
+
+def parse_easy_connect_dsn(dsn):
+    """Split an Easy Connect DSN ``<host>:<port>/<service_name>`` into parts.
+
+    The port is optional and defaults to ``'1521'``.
+
+    :param dsn: DSN string, e.g. ``'10.0.0.1:1521/DWH'``.
+    :return: Tuple ``(host, port, service_name)``.
+    :raises ValueError: If ``dsn`` is not in the expected format.
+    """
+    match = _EASY_CONNECT_RE.match(dsn) if isinstance(dsn, str) else None
+    if not match:
+        raise ValueError(
+            f"Invalid DSN {dsn!r}: expected '<host>:<port>/<service_name>'.")
+    host, port, service_name = match.groups()
+    return host, port or '1521', service_name
+
+
 def _validate_identifier(name):
     """Return ``name`` if it is a safe Oracle identifier, else raise ValueError."""
     if not isinstance(name, str) or not _IDENTIFIER_RE.match(name):
@@ -39,8 +60,9 @@ def _validate_identifier(name):
 
 class OracleDataRetriever():
 
-    def __init__(self, user: str, password: str, host: str,
-                 port: str = '1521', service_name: str = 'DWH') -> None:
+    def __init__(self, user: str, password: str, host: str = None,
+                 port: str = '1521', service_name: str = 'DWH',
+                 dsn: str = None) -> None:
         """Create an Oracle connector.
 
         Builds the SQLAlchemy engine URL and DSN. The SQLAlchemy engine and the
@@ -56,7 +78,15 @@ class OracleDataRetriever():
         :param host: Database host/IP.
         :param port: Listener port (default '1521').
         :param service_name: Oracle service name (default 'DWH').
+        :param dsn: Optional Easy Connect DSN ``'<host>:<port>/<service_name>'``
+            (e.g. ``'10.0.0.1:1521/DWH'``). When given, it replaces
+            ``host``/``port``/``service_name``.
         """
+        self.easy_connect_dsn = dsn
+        if dsn is not None:
+            host, port, service_name = parse_easy_connect_dsn(dsn)
+        elif not host:
+            raise ValueError("Either 'host' or 'dsn' must be provided.")
         self.host = host
         self.port = port
         self.service_name = service_name
@@ -70,6 +100,11 @@ class OracleDataRetriever():
         )
         self._engine = None
         self._pool = None
+
+    @classmethod
+    def from_dsn(cls, user: str, password: str, dsn: str):
+        """Create a connector from an Easy Connect DSN ``'<host>:<port>/<service_name>'``."""
+        return cls(user=user, password=password, dsn=dsn)
 
     def get_pool(self):
         """Return the oracledb connection pool, creating it on first use.

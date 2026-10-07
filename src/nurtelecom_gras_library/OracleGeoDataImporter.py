@@ -60,7 +60,8 @@ def _parse_geometry(value, geom_format, wkt_module, wkb_module):
 
 class OracleGeoDataImporter(OracleDataRetriever):
 
-    def __init__(self, user, password, host, port='1521', service_name='DWH') -> None:
+    def __init__(self, user, password, host=None, port='1521', service_name='DWH',
+                 dsn=None) -> None:
         """Create a geo-aware Oracle connector.
 
         Same connection parameters as :class:`OracleDataRetriever`; this subclass
@@ -71,8 +72,9 @@ class OracleGeoDataImporter(OracleDataRetriever):
         :param host: Database host.
         :param port: Listener port (default '1521').
         :param service_name: Oracle service name (default 'DWH').
+        :param dsn: Optional Easy Connect DSN ``'<host>:<port>/<service_name>'``.
         """
-        super().__init__(user, password, host, port, service_name)
+        super().__init__(user, password, host, port, service_name, dsn)
 
     @measure_time
     def get_data(self, query, use_geopandas=True, geom_columns_list=None,
